@@ -1,6 +1,11 @@
-python3-py-netgear-plus (0.4.6-1) UNRELEASED; urgency=low
+python3-py-netgear-plus (0.4.6-1) UNRELEASED; urgency=medium
 
-  * Initial release. Closes: #nnnn
-    <nnnn is the bug number of your ITP>
+  * Initial debianized release.
+  * Bump ruff from 0.9.5 to 0.9.6 by @dependabot in #49
+  * feat: add GS116Ev2 by @bilhert in #50
+  * Fix statistics parsing for GS105Ev2 by @foxey in #53
+  * Feat: implement GS305E by @dorianim in #52
+  * Fix GS305E parser for port statistics. by @foxey in #54
+  * Support for GS108Ev4 by @MichaGitUser in #51
 
- -- Tim Orling <>  Sat, 07 Jun 2025 12:01:45 -0700
+ -- Tim Orling <ticotimo@gmail.com>  Sat, 07 Jun 2025 12:24:48 -0700
