@@ -4,7 +4,7 @@
 set -e
 
 # Can be /var/cache/pbuilder/result for some workflows:
-RESULT_DIRECTORY=/var/cache/pbuilder/result
+RESULT_DIRECTORY=..
 
 # Get some information from the changelog
 SOURCE="$(dpkg-parsechangelog --show-field=Source)"
@@ -13,6 +13,11 @@ VERSION="$(dpkg-parsechangelog --show-field=Version)"
 # Read "--git-dist=foo" and "--git-arch=bar" from the command-line:
 DIST=bookworm
 ARCH="$(dpkg --print-architecture)"
+
+if [ ! -f "/var/cache/pbuilder/base.tgz" ]; then
+    sudo pbuilder create --distribution $DIST --architecture $ARCH
+fi
+
 for ARG
 do
     case "$ARG" in
