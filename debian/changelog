@@ -1,0 +1,6 @@
+python3-py-netgear-plus (0.4.6-1) UNRELEASED; urgency=low
+
+  * Initial release. Closes: #nnnn
+    <nnnn is the bug number of your ITP>
+
+ -- Tim Orling <>  Sat, 07 Jun 2025 12:01:45 -0700
