@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: python3-py-netgear-plus
-Upstream-Contact: <preferred name and address to reach the upstream project>
-Source: <url://example.com>
+Upstream-Contact: <Michiel Fokke https://github.com/foxey>
+Source: <https://github.com/foxey/py-netgear-plus>
 #
 # Please double check copyright with the licensecheck(1) command.
 
