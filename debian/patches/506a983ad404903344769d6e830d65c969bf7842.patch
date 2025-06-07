@@ -1,0 +1,4299 @@
+The automatically generated patch puts this free form text on top of it.
+
+If you are using gbp-buildpackage(1), you probably don't need this file.
+
+If you are using dgit-maint-merge(7), please consider text as follows.
+
+The Debian packaging of foo is maintained in git, using the merging workflow
+described in dgit-maint-merge(7).  There isn't a patch queue that can be
+represented as a quilt series.
+
+A detailed breakdown of the changes is available from their canonical
+representation - git commits in the packaging repository.  For example, to see
+the changes made by the Debian maintainer in the first upload of upstream
+version 1.2.3, you could use:
+
+    % git clone https://git.dgit.debian.org/foo
+    % cd foo
+    % git log --oneline 1.2.3..debian/1.2.3-1 -- . ':!debian'
+
+(If you have dgit, use `dgit clone foo`, rather than plain `git clone`.)
+
+A single combined diff, containing all the changes, follows.
+--- python3-py-netgear-plus-0.4.6.orig/.github/workflows/ci.yml
++++ python3-py-netgear-plus-0.4.6/.github/workflows/ci.yml
+@@ -19,7 +19,7 @@ jobs:
+         uses: "actions/checkout@v4.2.2"
+ 
+       - name: "Set up Python"
+-        uses: actions/setup-python@v5.4.0
++        uses: actions/setup-python@v5.6.0
+         with:
+           python-version: "3.12"
+           cache: "pip"
+--- python3-py-netgear-plus-0.4.6.orig/.github/workflows/release.yml
++++ python3-py-netgear-plus-0.4.6/.github/workflows/release.yml
+@@ -17,7 +17,7 @@ jobs:
+         uses: "actions/checkout@v4.2.2"
+ 
+       - name: "Set up Python"
+-        uses: actions/setup-python@v5.4.0
++        uses: actions/setup-python@v5.6.0
+         with:
+           python-version: "3.12"
+           cache: "pip"
+--- python3-py-netgear-plus-0.4.6.orig/HOWTO_Add_New_Models.md
++++ python3-py-netgear-plus-0.4.6/HOWTO_Add_New_Models.md
+@@ -11,7 +11,7 @@ To add a new switch model, you need to u
+ 
+ ## 1. Create a New Class for the Switch Model
+ 
+-Each switch model should inherit from `AutodetectedSwitchModel` or from the most similar existing model. Inheriting from a similar model reduces duplication and ensures compatibility with the library's structure.
++Each switch model should inherit from `AutodetectedSwitchModel` or from the most similar existing model. Inheriting from a similar model reduces duplication and ensures compatibility with the library's structure. Ensure that `MODEL_NAME` is identical to the class name. Intermediate classes that define logic shared by multiple models should not have a defined `MODEL_NAME` to prevend that `py_netgear_plus.autodetect_model()` finds multiple matching classes.
+ 
+ You can create a new switch model class by following the structure below:
+ 
+@@ -79,39 +79,9 @@ If the switch model supports additional
+ 
+ Refer to existing switch models in `models.py` for additional examples.
+ 
+-## 3. Register the Model in the `MODELS` List
++## 3. Create a Parser Class and Register It in `parsers.py`
+ 
+-At the bottom of `models.py`, find the `MODELS` list and add the new model class:
+-
+-```python
+-MODELS = [
+-    GS105E,
+-    GS105Ev2,
+-    GS105PE,
+-    GS108E,
+-    GSXYZ,  # Add the newly created model here
+-]
+-```
+-
+-This ensures the new model is available for auto-detection.
+-
+-## 4. Create a Parser Class and Register It in `parsers.py`
+-
+-Each switch model has its own parser class. If the new model introduces unique parsing logic, create a new parser class in `parsers.py`. Ensure that this parser class inherits from the most similar existing parser class to maintain consistency.
+-
+-After defining the parser class, add it to the `PARSERS` list at the end of `parsers.py`:
+-
+-```python
+-PARSERS = {
+-    "GS105E": GS105E,
+-    "GS105Ev2": GS105Ev2,
+-    "GS105PE": GS105PE,
+-    "GS108E": GS108E,
+-    "GSXYZ": GSXYZ,  # Add the newly created parser class here
+-}
+-```
+-
+-This ensures that the model can be correctly parsed during auto-detection.
++Each switch model has its own parser class. If the new model introduces unique parsing logic, create a new parser class in `parsers.py`. Ensure that this parser class inherits from the most similar existing parser class to maintain consistency. The name of the parser class should be identical to the name of the model in `models.py`.
+ 
+ ## 4. Add pages responses to the `pages/` folder
+ 
+--- python3-py-netgear-plus-0.4.6.orig/README.md
++++ python3-py-netgear-plus-0.4.6/README.md
+@@ -49,13 +49,14 @@ some basic configuration updates.
+ | GS108Ev4  | 8     | V1.0.1.3                               |                     |
+ | GS108PEv3 | 8     | V2.06.24                               | V0.00.00            |
+ | GS110EMX  | 10    | V1.0.2.8                               |                     |
+-| GS116Ev2  | 16    | ?                                      | ?                   |
++| GS116Ev2  | 16    | V2.6.0.48, V2.6.0.50                   |                     |
+ | GS305E    | 5     | V1.0.0.16                              | V1.0.0.2            |
+ | GS305EP   | 5     | V1.0.1.1                               |                     |
+ | GS305EPP  | 5     | V1.0.1.4                               |                     |
+ | GS308E    | 8     | V1.00.11                               | V1.00.03            |
+ | GS308EP   | 8     | V1.0.0.10, V1.0.1.4                    |                     |
+ | GS308EPP  | 8     | V1.0.1.4                               |                     |
++| GS308Ev4  | 8     | V1.0.1.3                               |                     |
+ | GS316EP   | 16    | V1.0.4.4                               |                     |
+ | GS316EPP  | 16    | V1.0.4.4                               |                     |
+ | JGS516PE  | 16    | V2.6.0.48                              |                     |
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/build.sh
+@@ -0,0 +1,79 @@
++#!/bin/bash
++
++# Exit if any programs fail:
++set -e
++
++# Can be /var/cache/pbuilder/result for some workflows:
++RESULT_DIRECTORY=..
++
++# Get some information from the changelog
++SOURCE="$(dpkg-parsechangelog --show-field=Source)"
++VERSION="$(dpkg-parsechangelog --show-field=Version)"
++
++# Read "--git-dist=foo" and "--git-arch=bar" from the command-line:
++DIST=bookworm
++ARCH="$(dpkg --print-architecture)"
++
++if [ ! -f "/var/cache/pbuilder/base.tgz" ]; then
++    sudo pbuilder create --distribution $DIST --architecture $ARCH
++fi
++
++for ARG
++do
++    case "$ARG" in
++        "--git-dist="*)
++            DIST="${ARG#--git-dist=}"
++            ;;
++        "--git-arch="*)
++            ARCH="${ARG#--git-arch=}"
++            ;;
++    esac
++done
++
++CHANGES_FILE="$RESULT_DIRECTORY/${SOURCE}_${VERSION}_${ARCH}.changes"
++DEB_FILE="$RESULT_DIRECTORY/${SOURCE}_${VERSION}_${ARCH}.deb"
++LOG_FILE="$RESULT_DIRECTORY/${SOURCE}_${VERSION}_${ARCH}.log"
++
++# Calculate the pbuilder base tarball/path:
++BASE=/var/cache/pbuilder/base
++if [ -n "$DIST" -a "$DIST" != sid ]
++then BASE="$BASE-$DIST"
++fi
++if [ -n "$ARCH" -a "$ARCH" != "$(dpkg --print-architecture)" ]
++then BASE="$BASE-$ARCH"
++fi
++
++# Run pbuilder with arguments from the command-line:
++echo -n "[$(date)] Running gbp buildpackage" >&2
++set -o pipefail
++sudo BUILDER=pbuilder gbp buildpackage "$@" \
++    | tee "$LOG_FILE" \
++    | while read LINE ; do echo -n . >&2 ; done
++set +o pipefail
++echo " OK" >&2
++echo >&2
++
++echo "[$(date)] Running lintian..." >&2
++lintian --info --display-info --pedantic "$CHANGES_FILE"
++echo "[$(date)] lintian: OK" >&2
++echo >&2
++
++echo "[$(date)] Running piuparts..." >&2
++sudo piuparts --log-level info --basetgz "$BASE.tgz" "$DEB_FILE"
++echo "[$(date)] piuparts: OK" >&2
++echo >&2
++
++echo "[$(date)] Running autopkgtest..." >&2
++set +e
++autopkgtest --no-built-binaries --apt-upgrade "$CHANGES_FILE" \
++    -- unshare --release "$DIST" --arch "$ARCH"
++RESULT="$?"
++set -e
++case "$RESULT" in
++    0) echo "autopkgtest: OK" >&2 ;;
++    8) echo "autopkgtest: no tests in this package, or all non-superficial tests were skipped" >&2 ;;
++    *) exit "$RESULT" >&2
++esac
++echo >&2
++
++echo "[$(date)] Success!" >&2
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS308Ev4/0/dashboard.cgi
+@@ -0,0 +1,810 @@
++<!DOCTYPE html>
++<html>
++<head>
++</head>
++<body onload="">
++<div class="container">
++<div class="row">
++<div class="col-xs-12 col-xl-8 over_flow_hid" id="sys_info">
++<div class="row">
++<div class="col-xs-12 col-sm-4">
++<div class="box_container">
++<div class="box_css border_right_radius">
++<div class="box_flex left_box_content">
++<div class="margin_top">
++<img class="icon_display icon_1" src="/switch-desktop.svg">
++<div class="switch-nighthawk">
++<div class="font_bold">ml396</div>
++<div id="switch_name" untrans></div>
++</div>
++</div>
++<div class="col_line"></div>
++<div>
++<a class="icon_display icon_2" onclick="document.getElementById('dashboard_port').scrollIntoView();">
++<span>#</span>
++</a>
++<div class="switch-nighthawk">
++<div class="font_bold">ml180</div>
++<div class="font_bold">ml035</div>
++</div>
++</div>
++</div>
++</div>
++</div>
++</div>
++<div id="dashboard_info" class="col-xs-12 col-sm-8" style="z-index:1;">
++<div class="mid_border_margin">
++<div class="box_css border_left_radius">
++<div class="mid_row">
++<div name='isShowSysinfo' class="mid_row_title">
++<div class="info_header_content">
++<div class="mid_title_icon icon_color_gray icon_sm accordion_icon" style="margin-right:0.75rem;">
++<span class="icon-info-outline"></span></div>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span></i>
++<span style="color:#00d76f;">ml565</span></div></div>
++<div id='sysinfoContainer' class="hid_info max_height">
++<form name='sysInfo' method="post" action="switch_name.cgi">
++<div class="hid_content row row-xs"><div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span>ml089</span></div>
++<div><span>V1.0.1.3</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml550</span></div>
++<div id='supportDhDiv' withsubtag>ml791</div>
++<input type="hidden" id="prctName" value="GS308Ev4" />
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml656</span></div>
++<div><span>
++<input id="switchName" name='switch_name' class="input-theme" style="width:130%;color:#fff;" oninput="enableButtons()" maxlength="20" role="input" value="sw-test" type="text">
++</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml678</span></div>
++<div><span>54:07:7D:1A:B0:6A</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml198</span></div>
++<div><span>7H914553C0473</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml040</span></div>
++<div><span>GS308Ev4</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>Language</span></div>
++  <div style='padding:0 0 0 1.5rem;'><div class="dropdown" style="width:78%">
++    <p onclick="dropdownMenu(this)" class="dropdown-toggle" name="dropdownToggle" data-toggle="dropdown">
++      <span id='curLangTxt' class="selectItem" style='padding:0'>English</span><span class="dropdown_icon icon-collapse"></span>
++    </p>
++    <ul id='langList' class="dropdown-menu">
++      <li value='at' class="waves-effect waves-gray"><a>Auto</a></li>
++      <li value='en' class="waves-effect waves-gray"><a>English</a></li>
++      <li value='de' class="waves-effect waves-gray"><a>Deutsch</a></li>
++      <li value='ja' class="waves-effect waves-gray"><a>日本語</a></li>
++    </ul>
++    <input type="hidden" name='SET_LANG' id="selLang" class="hidValue" value="en">
++  </div></div>
++</div>
++</div>
++    <input type=hidden name='hash' id='hash' value="36972918d3ef224384991b279306afd4">
++</form>
++<div class= "submit_btn">
++<span class="text-primary"><button name='submitSysinfo' onclick='submitSysInfo()' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini" disabled=''>
++APPLY
++</button></span>
++<span class="text-muted"><button name='cancelSysinfo' onclick="cancelDashboard(this)" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_default button_theme_mini button button_mini" disabled=''>
++CANCEL
++</button></span>
++</div></div></div>
++<div class="mid_row">
++<div name='isShowPotled' class="mid_row_title">
++<div class="info_header_content">
++<div class="mid_title_icon icon_color_gray icon_sm accordion_icon" style="margin-right:0.75rem;">
++<span class="icon-LED-outline"></span>
++</div>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i>
++<span class="text_display padding_r_18 pull-right">
++<span class="" id='led_switch'>ON</span>
++</span>
++<span style="color:#00d76f;">ml389</span>
++</div>
++</div>
++<div class="hid_info" style='max-height:121px;'>
++<div class="hid_box js_active">
++<div class="clearfix" style="margin-left:3.5rem">
++<div class="checkbox">
++<input id='ledMod' type="checkbox" onclick="enableButtons()" checked/>
++<label></label>
++</div>
++</div>
++<div><div class="stealth_mode">
++ <span>OFF</span><span>ml293</span></div>
++<div class="stealth_mode"  style="color:#00d76f;margin-left:1rem">
++ <span>ON</span><span>ml351</span></div></div>
++<div class= "submit_btn">
++<span class="text-primary"><button name='submitLed' onclick='submitLED()' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini" disabled=''>
++APPLY
++</button></span>
++<span class="text-muted"><button name='cancelLed' onclick="cancelDashboard(this)" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_default button_theme_mini button button_mini" disabled=''>
++CANCEL
++</button></span>
++</div></div></div></div>
++<div class="mid_row">
++<div name='isShowDhcp' class="mid_row_title" onclick="getHidPage('ip_dhcp')">
++<div class="info_header_content">
++<div class="mid_title_icon icon_color_gray icon_sm accordion_icon" style="margin-right:0.75rem;">
++<span class="icon-ip"></span>
++</div>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i>
++<span style="font-weight:500;font-size:14px; color:#00d76f;">ml257</span>
++<span id='dhcp_header' style="padding-left:1rem;">ml152</span>
++<span class="text_display pull-right padding_r_18">
++<span class="">192.168.0.239</span></span>
++</div></div>
++<div id='ip_dhcp' class="hid_info" style='max-height:370px;'>
++</div></div>
++<div class='mid_row'>
++<input id="hiddenMem" value="00000000" type="hidden">
++<div class='mid_row_title' onclick="redirectToLAGPage()">
++<div class='info_header_content'>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right"><span class="icon-expand icon-right"></span></i>
++<div class='mid_title_icon icon_color_gray icon_sm accordion_icon' style='margin-right:0.75rem;'>
++<span class='icon-lag-outline'><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span>
++</div>
++<span class='text_display padding_r_18 pull-right' style='top: -.5rem;position: relative;'>
++<span class='lag-content'>
++<input type=hidden id='lag_1_state' value='Link Down'>
++<div>LAG 1: <span id='lagState_1'></span> (<span id='lag'>ml394</span> <span id='lagPt1'></span>)</div>
++<input type=hidden id='lag_2_state' value='Link Down'>
++<div>LAG 2: <span id='lagState_2'></span> (<span id='lag'>ml394</span> <span id='lagPt2'></span>)</div>
++</span></span>
++<input type=hidden id='lag_num' value='2'>
++<span style="font-weight:500;font-size:14px; color:#00d76f;">LAG</span>
++</div></div></div>
++</div></div></div></div></div>
++<div class="col-xs-12 col-md-6 col-xl-4 over_flow_hid" id="dashboard_port">
++<div class="box_css volumes-scss widget_height has-bottom-opacity-effect" id="port_list">
++<div class="card-scss-header widget_header">
++<div class="card_title widget_header_title">ml495</div></div>
++<div class="box_flex" id="port_details">
++<ul class="list_css">
++<li class="list_item index_li">
++<div name='isShowPot1' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span class="text-success-1">UP</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="1">
++<span>1</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>1000M full</span>
++<input type="hidden" class="LinkedSpeed" value="1000M full">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot1' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot2' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="2">
++<span>2</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot2' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot3' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="3">
++<span>3</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot3' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot4' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="4">
++<span>4</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot4' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot5' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="5">
++<span>5</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot5' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot6' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="6">
++<span>6</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot6' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot7' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="7">
++<span>7</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot7' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot8' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="8">
++<span>8</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot8' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++</ul></div></div>
++<div class="box_css volumes-scss widget_height has-bottom-opacity-effect " id="port_edit">
++<div class="card-scss-header widget_header">
++<div class="card_title widget_header_title edit_port_id">
++</div>
++</div>
++<div class="box_flex">
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml042</span>
++</div>
++<input type="text" readOnly="readOnly" class="input-theme" id="portID" value="">
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml234</span>
++</div>
++<input id="portName" class="input-theme" maxlength="16" role="input" value="" type="text">
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform: scaleX(0);">
++</div>
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml510</span>
++</div>
++<div class="dropdown">
++<p onclick="dropdownMenu(this)" class="dropdown-toggle"  name="dropdownToggle" data-toggle="dropdown">
++<span name='speedTxt' class="selectItem speedText"></span>
++<span class="dropdown_icon icon-expand"></span></p>
++<ul class="dropdown-menu SpeedList" >
++<li class="waves-effect waves-gray"><a >Auto</a></li>
++<li class="waves-effect waves-gray"><a>Disable</a></li>
++<li class="waves-effect waves-gray"><a>10M full</a></li>
++<li class="waves-effect waves-gray"><a>100M full</a></li></ul>
++<input type="hidden" id="speedSelect" class="hidVal" value=""></div>
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform: scaleX(0);">
++</div>
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar  input_theme_label input_label">ml126</span>
++</div>
++<div class="dropdown">
++<p onclick="dropdownMenu(this)" class="dropdown-toggle"  name="dropdownToggle" data-toggle="dropdown">
++<span name='ingressTxt' class="selectItem IngressText"></span>
++<span class="dropdown_icon icon-expand"></span></p>
++<ul class="dropdown-menu IngressList" >
++<li class="waves-effect waves-gray"><a >No Limit</a></li>
++<li class="waves-effect waves-gray"><a>512 Kbit/s</a></li>
++<li class="waves-effect waves-gray"><a >1 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>2 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >4 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >8 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>16 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >32 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>64 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >128 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >256 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>512 Mbit/s</a></li></ul>
++<input type="hidden" id="IngressSelect" class="hidVal" value=""></div>
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform:scaleX(0);">
++</div>
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml086</span>
++</div>
++<div class="dropdown">
++<p onclick="dropdownMenu(this)" class="dropdown-toggle"  name="dropdownToggle" data-toggle="dropdown">
++<span name='egressTxt' class="selectItem EgressText"></span>
++<span class="dropdown_icon icon-expand"></span></p>
++<ul class="dropdown-menu EgressList" >
++<li class="waves-effect waves-gray"><a >No Limit</a></li>
++<li class="waves-effect waves-gray"><a>512 Kbit/s</a></li>
++<li class="waves-effect waves-gray"><a >1 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>2 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >4 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >8 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>16 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >32 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>64 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >128 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >256 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>512 Mbit/s</a></li></ul>
++<input type="hidden" class="hidVal" id="EgressSelect" value=""></div>
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform: scaleX(0);">
++</div>
++</div>
++<div class="flow_control">
++<div class="flow_control_des">
++<span class="input_theme_bar input_theme_label input_label">ml322
++ <p style="color:#777;padding-top:3px;">ml081</p>
++</span>
++ </div>
++<div class="checkbox" style='padding-top:16px;'>
++ <input id="flowControlCheck" type="checkbox" checked="" value="">
++ <label></label>
++ </div>
++</div>
++<div class= "submit_btn port_status_btn">
++<span class="text-primary"><button name='submitPotedit' onclick="submitPortEdit()" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++APPLY</button></span>
++ <span class="text-muted"><button name='cancelPotedit' onclick="back_port_info()" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_default button_theme_mini button button_mini">
++CANCEL</button></span>
++</div>
++</div>
++ </div>
++</div>
++</div>
++</div>
++<script type="text/javascript">
++function initLangEvents(){
++        curLangTxt = 'English';
++        var langList = $('#langList > li');
++    for(var i=0, len=langList.length; i<len; i++){
++        if(langList.eq(i).attr('value') == $('#selLang').val()){
++            curLangTxt = langList.eq(i).find('a').text();
++        }
++    }
++    laterLangTxt = curLangTxt;
++    if ($('#isAuto').val() === 'ENABLE') {
++        $('#curLangTxt').text(MultLang.transLang('Auto')).attr('data-save', MultLang.transLang('Auto'));
++    } else {
++        $('#curLangTxt').text(curLangTxt).attr('data-save', curLangTxt);
++    }
++    langList.click(function(){
++        enableButtons();
++        laterLangTxt = $(this).find('a').text();
++    });
++}
++function getProductName(){
++    var $ele = $('#supportDhDiv a');
++    var link = $ele.attr('href');
++    var proName = $('#prctName').val();
++    link = link.replace('GS308EP', proName);
++    $ele.attr('href', link);
++}
++$(document).ready(function(){
++    $(document).bind("click", function(e){
++      if ($(e.target).closest(".ip_input").length == 0){
++          $(".ip_input").each(
++          function(e)
++          {
++            $(this).find(".hr2").css("transform","scaleX(0)");
++          }
++        );
++      }
++    });
++    updataConnectedPortNum();
++    initLangEvents();
++    transPage($('#main-content')[0]);
++    initShowHidTxt();
++    getLagInfo();
++    getProductName();
++});
++</script>
++</body>
++ </html>
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS308Ev4/0/login.cgi
+@@ -0,0 +1,50 @@
++<!DOCTYPE html>
++<html>
++<head>
++<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
++<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
++<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
++<link rel="stylesheet" type="text/css" href="/login.css">
++<title>NETGEAR GS308Ev4</title>
++<script src="/zepto.min.js" type="text/javascript"></script>
++<script src="/login.js" type="text/javascript"></script>
++<script src="/b_md5.js" type="text/javascript"></script>
++</head>
++<body class="bodyBg">
++<form name="login" action="/login.cgi" method="post" onSubmit="return false;">
++  <input id="submitPwd" name="password" type="hidden" value="">
++  <div class="loginBody">
++    <div class="switch">
++      <div class="switch-icon"><img src="/switch-logo.svg" class="switch_image"></div>
++<span class="p-name">GS308Ev4</span>
++    </div>
++    <div class="summary">
++      <span>If logging in for the first time, log in with your switch's default password which is found on the label on the bottom of the switch.</span>
++    </div>
++    <div class="text-field">
++      <label for="password" class="pwd-label">Device Password</label>
++      <div class="pwd-field"></div>
++      <input class="pwd-field-text" id="password" type="password" maxlength="20" size="20" value="" autocomplete="off">
++      <div>
++        <hr class="hr1">
++        <hr class="hr2">
++      </div>
++      <div onclick="toggleEye()" class="switch-eye">
++        <i class="icon-eye-off show"></i>
++        <i class="icon-eye-on"></i>
++      </div>
++    </div>
++<div class='pwdErrStyle'></div>
++<input type=hidden id='acptLang' value='en' disabled><input type=hidden id='rand' value='1467252539' disabled><div class="signin-button" style='cursor:pointer;'>
++      <div style='height:2.75rem;' onclick="encryptPwd();submitLogin()"><a id="loginBtn" href="javaScript:void(0)" class="button-label">LOG IN</a></div>
++    </div>
++  </div>
++  </form>
++    <script type="text/javascript">
++        $(document).ready(function(){
++            transMultipleLang(document.body);
++            $(".pwdErrStyle").html(transParamLang($(".pwdErrStyle").text()));
++        });
++    </script>
++ </body>
++</html>
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS308Ev4/0/portStatistics.cgi
+@@ -0,0 +1,81 @@
++<!DOCTYPE html>
++<html>
++<head>
++</head>
++<body>
++<div class="">
++<div id="settingsStatusContainer" class="src-views-settings-backups-items-index-container fadeInUp animated cmn-animation">
++<div>
++  <div class='module-title' style='padding-left:1.875rem;'>ml446</div>
++  <ul class='statistic-ul'>
++    <li><span>ml578</span><span>ml711</span><span>ml466</span><span>ml563</span></li>
++<li><span>1</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="247952">
++<input type="hidden" value="0">
++<input type="hidden" value="1719969">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>2</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>3</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>4</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>5</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>6</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>7</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>8</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++  </ul>
++  <div class='submit_btn' style='padding-right:1rem;'>
++    <span class='text-primary'>
++      <button onclick="cancelDiagnositicPage('portStatistics')" data-react-toolbox='button' class='toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini'>REFRESH</button>
++    </span>
++    <span class='text-muted'>
++      <button onclick="submitClearCounters()" data-react-toolbox='button' class='toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini'>CLEAR</button>
++    </span>
++  </div>
++</div>
++<script type="text/javascript">$(document).ready(function(){transPage($('#transContent')[0]);showCounter();});</script>
++<input type=hidden name='hash' id='hash' value="36972918d3ef224384991b279306afd4">
++</body>
++</html>
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS308Ev4/0/switch_infos.json
+@@ -0,0 +1,95 @@
++{
++    "switch_ip": "192.168.0.1",
++    "switch_name": "sw-test",
++    "switch_serial_number": "7H914553C0473",
++    "switch_bootloader": "unknown",
++    "switch_firmware": "V1.0.1.3",
++    "port_1_status": "on",
++    "port_1_modus_speed": true,
++    "port_1_connection_speed": 0,
++    "port_2_status": "off",
++    "port_2_modus_speed": true,
++    "port_2_connection_speed": 0,
++    "port_3_status": "off",
++    "port_3_modus_speed": true,
++    "port_3_connection_speed": 0,
++    "port_4_status": "off",
++    "port_4_modus_speed": true,
++    "port_4_connection_speed": 0,
++    "port_5_status": "off",
++    "port_5_modus_speed": true,
++    "port_5_connection_speed": 0,
++    "port_6_status": "off",
++    "port_6_modus_speed": true,
++    "port_6_connection_speed": 0,
++    "port_7_status": "off",
++    "port_7_modus_speed": true,
++    "port_7_connection_speed": 0,
++    "port_8_status": "off",
++    "port_8_modus_speed": true,
++    "port_8_connection_speed": 0,
++    "response_time_s": 0,
++    "port_1_traffic_rx_mbytes": 0.0,
++    "port_1_traffic_tx_mbytes": 0.0,
++    "port_1_speed_rx_mbytes": 0.0,
++    "port_1_speed_tx_mbytes": 0.0,
++    "port_1_speed_io_mbytes": 0.0,
++    "port_1_sum_rx_mbytes": 0.25,
++    "port_1_sum_tx_mbytes": 1.72,
++    "port_2_traffic_rx_mbytes": 0.0,
++    "port_2_traffic_tx_mbytes": 0.0,
++    "port_2_speed_rx_mbytes": 0.0,
++    "port_2_speed_tx_mbytes": 0.0,
++    "port_2_speed_io_mbytes": 0.0,
++    "port_2_sum_rx_mbytes": 0.0,
++    "port_2_sum_tx_mbytes": 0.0,
++    "port_3_traffic_rx_mbytes": 0.0,
++    "port_3_traffic_tx_mbytes": 0.0,
++    "port_3_speed_rx_mbytes": 0.0,
++    "port_3_speed_tx_mbytes": 0.0,
++    "port_3_speed_io_mbytes": 0.0,
++    "port_3_sum_rx_mbytes": 0.0,
++    "port_3_sum_tx_mbytes": 0.0,
++    "port_4_traffic_rx_mbytes": 0.0,
++    "port_4_traffic_tx_mbytes": 0.0,
++    "port_4_speed_rx_mbytes": 0.0,
++    "port_4_speed_tx_mbytes": 0.0,
++    "port_4_speed_io_mbytes": 0.0,
++    "port_4_sum_rx_mbytes": 0.0,
++    "port_4_sum_tx_mbytes": 0.0,
++    "port_5_traffic_rx_mbytes": 0.0,
++    "port_5_traffic_tx_mbytes": 0.0,
++    "port_5_speed_rx_mbytes": 0.0,
++    "port_5_speed_tx_mbytes": 0.0,
++    "port_5_speed_io_mbytes": 0.0,
++    "port_5_sum_rx_mbytes": 0.0,
++    "port_5_sum_tx_mbytes": 0.0,
++    "port_6_traffic_rx_mbytes": 0.0,
++    "port_6_traffic_tx_mbytes": 0.0,
++    "port_6_speed_rx_mbytes": 0.0,
++    "port_6_speed_tx_mbytes": 0.0,
++    "port_6_speed_io_mbytes": 0.0,
++    "port_6_sum_rx_mbytes": 0.0,
++    "port_6_sum_tx_mbytes": 0.0,
++    "port_7_traffic_rx_mbytes": 0.0,
++    "port_7_traffic_tx_mbytes": 0.0,
++    "port_7_speed_rx_mbytes": 0.0,
++    "port_7_speed_tx_mbytes": 0.0,
++    "port_7_speed_io_mbytes": 0.0,
++    "port_7_sum_rx_mbytes": 0.0,
++    "port_7_sum_tx_mbytes": 0.0,
++    "port_8_traffic_rx_mbytes": 0.0,
++    "port_8_traffic_tx_mbytes": 0.0,
++    "port_8_speed_rx_mbytes": 0.0,
++    "port_8_speed_tx_mbytes": 0.0,
++    "port_8_speed_io_mbytes": 0.0,
++    "port_8_sum_rx_mbytes": 0.0,
++    "port_8_sum_tx_mbytes": 0.0,
++    "sum_port_traffic_rx": 0.0,
++    "sum_port_traffic_tx": 0.0,
++    "sum_port_speed_rx": 0.0,
++    "sum_port_speed_tx": 0.0,
++    "sum_port_speed_io": 0.0,
++    "port_8_crc_errors": 0,
++    "sum_port_crc_errors": 0
++}
+\ No newline at end of file
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS308Ev4/1/dashboard.cgi
+@@ -0,0 +1,810 @@
++<!DOCTYPE html>
++<html>
++<head>
++</head>
++<body onload="">
++<div class="container">
++<div class="row">
++<div class="col-xs-12 col-xl-8 over_flow_hid" id="sys_info">
++<div class="row">
++<div class="col-xs-12 col-sm-4">
++<div class="box_container">
++<div class="box_css border_right_radius">
++<div class="box_flex left_box_content">
++<div class="margin_top">
++<img class="icon_display icon_1" src="/switch-desktop.svg">
++<div class="switch-nighthawk">
++<div class="font_bold">ml396</div>
++<div id="switch_name" untrans></div>
++</div>
++</div>
++<div class="col_line"></div>
++<div>
++<a class="icon_display icon_2" onclick="document.getElementById('dashboard_port').scrollIntoView();">
++<span>#</span>
++</a>
++<div class="switch-nighthawk">
++<div class="font_bold">ml180</div>
++<div class="font_bold">ml035</div>
++</div>
++</div>
++</div>
++</div>
++</div>
++</div>
++<div id="dashboard_info" class="col-xs-12 col-sm-8" style="z-index:1;">
++<div class="mid_border_margin">
++<div class="box_css border_left_radius">
++<div class="mid_row">
++<div name='isShowSysinfo' class="mid_row_title">
++<div class="info_header_content">
++<div class="mid_title_icon icon_color_gray icon_sm accordion_icon" style="margin-right:0.75rem;">
++<span class="icon-info-outline"></span></div>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span></i>
++<span style="color:#00d76f;">ml565</span></div></div>
++<div id='sysinfoContainer' class="hid_info max_height">
++<form name='sysInfo' method="post" action="switch_name.cgi">
++<div class="hid_content row row-xs"><div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span>ml089</span></div>
++<div><span>V1.0.1.3</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml550</span></div>
++<div id='supportDhDiv' withsubtag>ml791</div>
++<input type="hidden" id="prctName" value="GS308Ev4" />
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml656</span></div>
++<div><span>
++<input id="switchName" name='switch_name' class="input-theme" style="width:130%;color:#fff;" oninput="enableButtons()" maxlength="20" role="input" value="sw-test" type="text">
++</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml678</span></div>
++<div><span>54:07:7D:1A:B0:6A</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml198</span></div>
++<div><span>7H914553C0473</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>ml040</span></div>
++<div><span>GS308Ev4</span></div></div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title"><span>Language</span></div>
++  <div style='padding:0 0 0 1.5rem;'><div class="dropdown" style="width:78%">
++    <p onclick="dropdownMenu(this)" class="dropdown-toggle" name="dropdownToggle" data-toggle="dropdown">
++      <span id='curLangTxt' class="selectItem" style='padding:0'>English</span><span class="dropdown_icon icon-collapse"></span>
++    </p>
++    <ul id='langList' class="dropdown-menu">
++      <li value='at' class="waves-effect waves-gray"><a>Auto</a></li>
++      <li value='en' class="waves-effect waves-gray"><a>English</a></li>
++      <li value='de' class="waves-effect waves-gray"><a>Deutsch</a></li>
++      <li value='ja' class="waves-effect waves-gray"><a>日本語</a></li>
++    </ul>
++    <input type="hidden" name='SET_LANG' id="selLang" class="hidValue" value="en">
++  </div></div>
++</div>
++</div>
++    <input type=hidden name='hash' id='hash' value="36972918d3ef224384991b279306afd4">
++</form>
++<div class= "submit_btn">
++<span class="text-primary"><button name='submitSysinfo' onclick='submitSysInfo()' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini" disabled=''>
++APPLY
++</button></span>
++<span class="text-muted"><button name='cancelSysinfo' onclick="cancelDashboard(this)" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_default button_theme_mini button button_mini" disabled=''>
++CANCEL
++</button></span>
++</div></div></div>
++<div class="mid_row">
++<div name='isShowPotled' class="mid_row_title">
++<div class="info_header_content">
++<div class="mid_title_icon icon_color_gray icon_sm accordion_icon" style="margin-right:0.75rem;">
++<span class="icon-LED-outline"></span>
++</div>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i>
++<span class="text_display padding_r_18 pull-right">
++<span class="" id='led_switch'>ON</span>
++</span>
++<span style="color:#00d76f;">ml389</span>
++</div>
++</div>
++<div class="hid_info" style='max-height:121px;'>
++<div class="hid_box js_active">
++<div class="clearfix" style="margin-left:3.5rem">
++<div class="checkbox">
++<input id='ledMod' type="checkbox" onclick="enableButtons()" checked/>
++<label></label>
++</div>
++</div>
++<div><div class="stealth_mode">
++ <span>OFF</span><span>ml293</span></div>
++<div class="stealth_mode"  style="color:#00d76f;margin-left:1rem">
++ <span>ON</span><span>ml351</span></div></div>
++<div class= "submit_btn">
++<span class="text-primary"><button name='submitLed' onclick='submitLED()' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini" disabled=''>
++APPLY
++</button></span>
++<span class="text-muted"><button name='cancelLed' onclick="cancelDashboard(this)" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_default button_theme_mini button button_mini" disabled=''>
++CANCEL
++</button></span>
++</div></div></div></div>
++<div class="mid_row">
++<div name='isShowDhcp' class="mid_row_title" onclick="getHidPage('ip_dhcp')">
++<div class="info_header_content">
++<div class="mid_title_icon icon_color_gray icon_sm accordion_icon" style="margin-right:0.75rem;">
++<span class="icon-ip"></span>
++</div>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i>
++<span style="font-weight:500;font-size:14px; color:#00d76f;">ml257</span>
++<span id='dhcp_header' style="padding-left:1rem;">ml152</span>
++<span class="text_display pull-right padding_r_18">
++<span class="">192.168.0.239</span></span>
++</div></div>
++<div id='ip_dhcp' class="hid_info" style='max-height:370px;'>
++</div></div>
++<div class='mid_row'>
++<input id="hiddenMem" value="00000000" type="hidden">
++<div class='mid_row_title' onclick="redirectToLAGPage()">
++<div class='info_header_content'>
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right"><span class="icon-expand icon-right"></span></i>
++<div class='mid_title_icon icon_color_gray icon_sm accordion_icon' style='margin-right:0.75rem;'>
++<span class='icon-lag-outline'><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span></span>
++</div>
++<span class='text_display padding_r_18 pull-right' style='top: -.5rem;position: relative;'>
++<span class='lag-content'>
++<input type=hidden id='lag_1_state' value='Link Down'>
++<div>LAG 1: <span id='lagState_1'></span> (<span id='lag'>ml394</span> <span id='lagPt1'></span>)</div>
++<input type=hidden id='lag_2_state' value='Link Down'>
++<div>LAG 2: <span id='lagState_2'></span> (<span id='lag'>ml394</span> <span id='lagPt2'></span>)</div>
++</span></span>
++<input type=hidden id='lag_num' value='2'>
++<span style="font-weight:500;font-size:14px; color:#00d76f;">LAG</span>
++</div></div></div>
++</div></div></div></div></div>
++<div class="col-xs-12 col-md-6 col-xl-4 over_flow_hid" id="dashboard_port">
++<div class="box_css volumes-scss widget_height has-bottom-opacity-effect" id="port_list">
++<div class="card-scss-header widget_header">
++<div class="card_title widget_header_title">ml495</div></div>
++<div class="box_flex" id="port_details">
++<ul class="list_css">
++<li class="list_item index_li">
++<div name='isShowPot1' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span class="text-success-1">UP</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="1">
++<span>1</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>1000M full</span>
++<input type="hidden" class="LinkedSpeed" value="1000M full">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot1' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot2' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="2">
++<span>2</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot2' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot3' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="3">
++<span>3</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot3' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot4' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="4">
++<span>4</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot4' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot5' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="5">
++<span>5</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot5' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot6' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="6">
++<span>6</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot6' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot7' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="7">
++<span>7</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot7' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++<li class="list_item index_li">
++<div name='isShowPot8' class="li_header_content">
++<i class="mid_title_icon icon_color_gray icon_sm accordion_icon accordion_plus pull-right">
++<span class="icon-expand"></span>
++</i><span class=" padding_r_18 pull-right">
++<span>AVAILABLE</span></span>
++<span class="index_li_title">
++<input type="hidden" class="port" value="8">
++<span>8</span></span></div>
++<input type="hidden" class="portName" value="">
++<div class="port_info">
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml510</span></div>
++<div>
++<span>Auto</span>
++<input type="hidden" class="Speed" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml382</span></div>
++<div>
++<span>No Speed</span>
++<input type="hidden" class="LinkedSpeed" value="No Speed">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml126</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden"  class="ingressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml086</span></div>
++<div>
++<span>No Limit</span>
++<input type="hidden" class="egressRate" value="1">
++</div>
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div class="hid_info_title">
++<span class='hid-txt wid-full'>ml322</span></div>
++<div>
++<span>OFF</span></div>
++<input type="hidden" readOnly="readOnly" class="flowCtr" value="2">
++</div>
++<div class="hid_info_cell col-xs-12 col-sm-6">
++<div onclick="edit_port_info()" class="edit_btn">
++<button name='editPot8' data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++EDIT
++</button>
++</div>
++</div>
++</div>
++</li>
++</ul></div></div>
++<div class="box_css volumes-scss widget_height has-bottom-opacity-effect " id="port_edit">
++<div class="card-scss-header widget_header">
++<div class="card_title widget_header_title edit_port_id">
++</div>
++</div>
++<div class="box_flex">
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml042</span>
++</div>
++<input type="text" readOnly="readOnly" class="input-theme" id="portID" value="">
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml234</span>
++</div>
++<input id="portName" class="input-theme" maxlength="16" role="input" value="" type="text">
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform: scaleX(0);">
++</div>
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml510</span>
++</div>
++<div class="dropdown">
++<p onclick="dropdownMenu(this)" class="dropdown-toggle"  name="dropdownToggle" data-toggle="dropdown">
++<span name='speedTxt' class="selectItem speedText"></span>
++<span class="dropdown_icon icon-expand"></span></p>
++<ul class="dropdown-menu SpeedList" >
++<li class="waves-effect waves-gray"><a >Auto</a></li>
++<li class="waves-effect waves-gray"><a>Disable</a></li>
++<li class="waves-effect waves-gray"><a>10M full</a></li>
++<li class="waves-effect waves-gray"><a>100M full</a></li></ul>
++<input type="hidden" id="speedSelect" class="hidVal" value=""></div>
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform: scaleX(0);">
++</div>
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar  input_theme_label input_label">ml126</span>
++</div>
++<div class="dropdown">
++<p onclick="dropdownMenu(this)" class="dropdown-toggle"  name="dropdownToggle" data-toggle="dropdown">
++<span name='ingressTxt' class="selectItem IngressText"></span>
++<span class="dropdown_icon icon-expand"></span></p>
++<ul class="dropdown-menu IngressList" >
++<li class="waves-effect waves-gray"><a >No Limit</a></li>
++<li class="waves-effect waves-gray"><a>512 Kbit/s</a></li>
++<li class="waves-effect waves-gray"><a >1 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>2 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >4 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >8 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>16 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >32 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>64 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >128 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >256 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>512 Mbit/s</a></li></ul>
++<input type="hidden" id="IngressSelect" class="hidVal" value=""></div>
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform:scaleX(0);">
++</div>
++</div>
++<div class="edit_port_info">
++<div class="edit_item">
++<span class="input_theme_bar input_theme_label input_label">ml086</span>
++</div>
++<div class="dropdown">
++<p onclick="dropdownMenu(this)" class="dropdown-toggle"  name="dropdownToggle" data-toggle="dropdown">
++<span name='egressTxt' class="selectItem EgressText"></span>
++<span class="dropdown_icon icon-expand"></span></p>
++<ul class="dropdown-menu EgressList" >
++<li class="waves-effect waves-gray"><a >No Limit</a></li>
++<li class="waves-effect waves-gray"><a>512 Kbit/s</a></li>
++<li class="waves-effect waves-gray"><a >1 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>2 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >4 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >8 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>16 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >32 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>64 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >128 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a >256 Mbit/s</a></li>
++<li class="waves-effect waves-gray"><a>512 Mbit/s</a></li></ul>
++<input type="hidden" class="hidVal" id="EgressSelect" value=""></div>
++<div class="hr">
++<hr class="hr1">
++<hr class="hr2" style="transform: scaleX(0);">
++</div>
++</div>
++<div class="flow_control">
++<div class="flow_control_des">
++<span class="input_theme_bar input_theme_label input_label">ml322
++ <p style="color:#777;padding-top:3px;">ml081</p>
++</span>
++ </div>
++<div class="checkbox" style='padding-top:16px;'>
++ <input id="flowControlCheck" type="checkbox" checked="" value="">
++ <label></label>
++ </div>
++</div>
++<div class= "submit_btn port_status_btn">
++<span class="text-primary"><button name='submitPotedit' onclick="submitPortEdit()" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini">
++APPLY</button></span>
++ <span class="text-muted"><button name='cancelPotedit' onclick="back_port_info()" data-react-toolbox="button" class="toolbox_lib_button button_theme_flat button_theme_default button_theme_mini button button_mini">
++CANCEL</button></span>
++</div>
++</div>
++ </div>
++</div>
++</div>
++</div>
++<script type="text/javascript">
++function initLangEvents(){
++        curLangTxt = 'English';
++        var langList = $('#langList > li');
++    for(var i=0, len=langList.length; i<len; i++){
++        if(langList.eq(i).attr('value') == $('#selLang').val()){
++            curLangTxt = langList.eq(i).find('a').text();
++        }
++    }
++    laterLangTxt = curLangTxt;
++    if ($('#isAuto').val() === 'ENABLE') {
++        $('#curLangTxt').text(MultLang.transLang('Auto')).attr('data-save', MultLang.transLang('Auto'));
++    } else {
++        $('#curLangTxt').text(curLangTxt).attr('data-save', curLangTxt);
++    }
++    langList.click(function(){
++        enableButtons();
++        laterLangTxt = $(this).find('a').text();
++    });
++}
++function getProductName(){
++    var $ele = $('#supportDhDiv a');
++    var link = $ele.attr('href');
++    var proName = $('#prctName').val();
++    link = link.replace('GS308EP', proName);
++    $ele.attr('href', link);
++}
++$(document).ready(function(){
++    $(document).bind("click", function(e){
++      if ($(e.target).closest(".ip_input").length == 0){
++          $(".ip_input").each(
++          function(e)
++          {
++            $(this).find(".hr2").css("transform","scaleX(0)");
++          }
++        );
++      }
++    });
++    updataConnectedPortNum();
++    initLangEvents();
++    transPage($('#main-content')[0]);
++    initShowHidTxt();
++    getLagInfo();
++    getProductName();
++});
++</script>
++</body>
++ </html>
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS308Ev4/1/portStatistics.cgi
+@@ -0,0 +1,81 @@
++<!DOCTYPE html>
++<html>
++<head>
++</head>
++<body>
++<div class="">
++<div id="settingsStatusContainer" class="src-views-settings-backups-items-index-container fadeInUp animated cmn-animation">
++<div>
++  <div class='module-title' style='padding-left:1.875rem;'>ml446</div>
++  <ul class='statistic-ul'>
++    <li><span>ml578</span><span>ml711</span><span>ml466</span><span>ml563</span></li>
++<li><span>1</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="250738">
++<input type="hidden" value="0">
++<input type="hidden" value="1732289">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>2</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>3</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>4</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>5</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>6</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>7</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<li><span>8</span><span></span><span></span><span></span></li>
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++<input type="hidden" value="0">
++  </ul>
++  <div class='submit_btn' style='padding-right:1rem;'>
++    <span class='text-primary'>
++      <button onclick="cancelDiagnositicPage('portStatistics')" data-react-toolbox='button' class='toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini'>REFRESH</button>
++    </span>
++    <span class='text-muted'>
++      <button onclick="submitClearCounters()" data-react-toolbox='button' class='toolbox_lib_button button_theme_flat button_theme_primary button_theme_mini button button_mini'>CLEAR</button>
++    </span>
++  </div>
++</div>
++<script type="text/javascript">$(document).ready(function(){transPage($('#transContent')[0]);showCounter();});</script>
++<input type=hidden name='hash' id='hash' value="36972918d3ef224384991b279306afd4">
++</body>
++</html>
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS308Ev4/1/switch_infos.json
+@@ -0,0 +1,95 @@
++{
++    "switch_ip": "192.168.0.1",
++    "switch_name": "sw-test",
++    "switch_serial_number": "7H914553C0473",
++    "switch_bootloader": "unknown",
++    "switch_firmware": "V1.0.1.3",
++    "port_1_status": "on",
++    "port_1_modus_speed": true,
++    "port_1_connection_speed": 0,
++    "port_2_status": "off",
++    "port_2_modus_speed": true,
++    "port_2_connection_speed": 0,
++    "port_3_status": "off",
++    "port_3_modus_speed": true,
++    "port_3_connection_speed": 0,
++    "port_4_status": "off",
++    "port_4_modus_speed": true,
++    "port_4_connection_speed": 0,
++    "port_5_status": "off",
++    "port_5_modus_speed": true,
++    "port_5_connection_speed": 0,
++    "port_6_status": "off",
++    "port_6_modus_speed": true,
++    "port_6_connection_speed": 0,
++    "port_7_status": "off",
++    "port_7_modus_speed": true,
++    "port_7_connection_speed": 0,
++    "port_8_status": "off",
++    "port_8_modus_speed": true,
++    "port_8_connection_speed": 0,
++    "response_time_s": 0,
++    "port_1_traffic_rx_mbytes": 0.0,
++    "port_1_traffic_tx_mbytes": 0.01,
++    "port_1_speed_rx_mbytes": 0.0,
++    "port_1_speed_tx_mbytes": 0.01,
++    "port_1_speed_io_mbytes": 0.02,
++    "port_1_sum_rx_mbytes": 0.25,
++    "port_1_sum_tx_mbytes": 1.73,
++    "port_2_traffic_rx_mbytes": 0.0,
++    "port_2_traffic_tx_mbytes": 0.0,
++    "port_2_speed_rx_mbytes": 0.0,
++    "port_2_speed_tx_mbytes": 0.0,
++    "port_2_speed_io_mbytes": 0.0,
++    "port_2_sum_rx_mbytes": 0.0,
++    "port_2_sum_tx_mbytes": 0.0,
++    "port_3_traffic_rx_mbytes": 0.0,
++    "port_3_traffic_tx_mbytes": 0.0,
++    "port_3_speed_rx_mbytes": 0.0,
++    "port_3_speed_tx_mbytes": 0.0,
++    "port_3_speed_io_mbytes": 0.0,
++    "port_3_sum_rx_mbytes": 0.0,
++    "port_3_sum_tx_mbytes": 0.0,
++    "port_4_traffic_rx_mbytes": 0.0,
++    "port_4_traffic_tx_mbytes": 0.0,
++    "port_4_speed_rx_mbytes": 0.0,
++    "port_4_speed_tx_mbytes": 0.0,
++    "port_4_speed_io_mbytes": 0.0,
++    "port_4_sum_rx_mbytes": 0.0,
++    "port_4_sum_tx_mbytes": 0.0,
++    "port_5_traffic_rx_mbytes": 0.0,
++    "port_5_traffic_tx_mbytes": 0.0,
++    "port_5_speed_rx_mbytes": 0.0,
++    "port_5_speed_tx_mbytes": 0.0,
++    "port_5_speed_io_mbytes": 0.0,
++    "port_5_sum_rx_mbytes": 0.0,
++    "port_5_sum_tx_mbytes": 0.0,
++    "port_6_traffic_rx_mbytes": 0.0,
++    "port_6_traffic_tx_mbytes": 0.0,
++    "port_6_speed_rx_mbytes": 0.0,
++    "port_6_speed_tx_mbytes": 0.0,
++    "port_6_speed_io_mbytes": 0.0,
++    "port_6_sum_rx_mbytes": 0.0,
++    "port_6_sum_tx_mbytes": 0.0,
++    "port_7_traffic_rx_mbytes": 0.0,
++    "port_7_traffic_tx_mbytes": 0.0,
++    "port_7_speed_rx_mbytes": 0.0,
++    "port_7_speed_tx_mbytes": 0.0,
++    "port_7_speed_io_mbytes": 0.0,
++    "port_7_sum_rx_mbytes": 0.0,
++    "port_7_sum_tx_mbytes": 0.0,
++    "port_8_traffic_rx_mbytes": 0.0,
++    "port_8_traffic_tx_mbytes": 0.0,
++    "port_8_speed_rx_mbytes": 0.0,
++    "port_8_speed_tx_mbytes": 0.0,
++    "port_8_speed_io_mbytes": 0.0,
++    "port_8_sum_rx_mbytes": 0.0,
++    "port_8_sum_tx_mbytes": 0.0,
++    "sum_port_traffic_rx": 0.0,
++    "sum_port_traffic_tx": 0.01,
++    "sum_port_speed_rx": 0.0,
++    "sum_port_speed_tx": 0.01,
++    "sum_port_speed_io": 0.02,
++    "port_8_crc_errors": 0,
++    "sum_port_crc_errors": 0
++}
+\ No newline at end of file
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS748T/0/main_login.html
+@@ -0,0 +1,236 @@
++
++
++<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
++<html>
++  <head>
++    <LINK REL=stylesheet HREF="/base/style.css" TYPE="text/css">
++<META http-equiv="Pragma" content="no-cache">
++<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1"> <!-- Style Sheet link and Meta data     -->
++    <TITLE>NETGEAR GS748T</TITLE> <!-- Netgear Page Title  -->
++
++    <script  src="/base/js/tabs_Layer2.js" type="text/javascript"></script>
++    <script  src="/base/js/rollover.js" type="text/javascript"></script>
++    <script  src="/base/js/browser.js" type="text/javascript"></script>
++    <script language="javascript">
++      var a1, a2, a3, a4, a5, a6, a7, a8;
++      a1 = new Image(130,29);
++      a1.src = "/base/images/tab_Login_off.gif";
++      a2 = new Image(130,29);
++      a2.src = "/base/images/tab_Login_on.gif";
++      a3 = new Image(130,29);
++      a3.src = "/base/images/tab_Login_ro.gif";
++      a4 = new Image(130,29);
++      a4.src = "/base/images/tab_Help_off.gif";
++      a5 = new Image(130,29);
++      a5.src = "/base/images/tab_Help_on.gif";
++      a6 = new Image(130,29);
++      a6.src = "/base/images/tab_Help_ro.gif";
++      a7 = new Image(130,29);
++      a7.src = "/base/images/onlinehelp_off.gif";
++      a8 = new Image(130,29);
++      a8.src = "/base/images/onlinehelp_on.gif";
++    </script>
++    <script type='text/javascript' language='JavaScript'>
++      //******************************************************************************
++      //* Purpose: Display an input error message.
++      //* Return:  none
++      //******************************************************************************
++      function DisplayErrorMsg()
++      {
++        alert(document.forms[0].err_msg.value);
++      }
++
++      function CheckError()
++      {
++        if (document.forms[0].err_flag.value == 1) 
++        {
++          DisplayErrorMsg();
++        }
++        document.forms[0].pwd.focus();
++      }
++    </script>
++  
++    <script language="javascript">
++      
++      var loc = null;
++      if (top != self)
++      {
++        top.location.href = "/base/web_main.html";
++      }
++
++      try {
++        if (self.opener != undefined)
++        {
++          loc = self.opener.location.href;
++        }
++      }
++      catch(e)
++      {
++        loc = undefined;
++      }
++
++      if ((loc != undefined) && (loc.indexOf("base") > -1))
++      {
++        self.close();
++        self.opener.location.reload();
++      }  
++      
++    </script>
++  </head>
++  <body onload="CheckError()">
++    <FORM METHOD="POST" ACTION="/base/main_login.html">
++      <table class="tableStyle" height="100%">
++        <tr class="topAlign">
++          <td class="leftEdge">&nbsp;</td>
++            <td valign="top">
++              <table class="tableStyle">
++                <tr>
++                  <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                  <td colspan="2">
++                    <table class="tableStyle">
++                      <tr>
++                        <td class="logoNetGear space50Percent topAlign"><a href="http://www.netgear.com/" target="_blank"><img src="/base/images/clear.gif" width="149" height="62"/></td>
++                        <td class="gs748tImage spacer50Percent topAlign rightHAlign"><a HREF="http://kbserver.netgear.com/products/GS748Tv4.asp" target="_blank"><img src="/base/images/clear.gif" width="205" height="62"/></td> <!-- Used to get the top right logo image with help URL  -->
++                      </tr>
++                      <tr>
++                        <td colspan="2" class="bottomAlign">
++                          <table class="tableStyle">
++                            <tr>
++                              <td class="spacer20Percent bottomAlign"><table border="0" cellpadding="0" cellspacing="0">
++                                <tr id="tabss" class="spacer100Percent">
++                                  <td class='navTopCell'><a href='javascript:void(0)' onmouseover=OverTab(this,1); onmouseout=OutTab(this,1);><img src='/base/images/tab_Login_on.gif' border='0'></a></td>
++                                  <td class='navTopCell'><A href='/base/help.html' onmouseover=OverTab(this,1); onmouseout=OutTab(this,1);><img src='/base/images/tab_Help_off.gif' border=0></a></td>
++                                </tr>
++                              </table>
++                            </td>
++                            <td class="loginActionCell spacer80Percent rightHAlign padding5LeftRight"></td>
++                          </tr>
++                        </table>
++                      </td>
++                    </tr>
++                  </table>
++                </td>
++                <td class="rightHAlign"><img src="/base/images/clear.gif" width="2"/></td>
++              </tr>
++              <tr class="background-blue">
++                <td><img src="/base/images/clear.gif" width="8"/></td>
++                <td colspan="2" class="padding7Top spacer100Percent">
++                  <div id="primaryNav">
++                    <table border="0" cellpadding="0" cellspacing="0">
++                      <tr>
++                        <td id='cloneTd' class="navCell">&nbsp;</td>
++                      </tr>
++                      <tr id='subTubs'></tr>
++                    </table>
++                  </div>
++                </td>
++                <td></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr class="topAlign">
++          <td valign="top" class="leftBodyNotch topAlign">&nbsp;</td>
++          <td>
++            <table class="tableStyle">
++              <tr class="topAlign">
++                <td class="leftNextBodyNotch"><img src="/base/images/clear.gif" width="11" height="16"/></td>
++                <td class="middleBodyNotch spacer100Percent">&nbsp;</td>
++                <td class="rightNextBodyNotch"><img src="/base/images/clear.gif" width="11"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightBodyNotch">&nbsp;</td>
++        </tr>
++        <tr height=100%>
++          <td rowspan="2" class="leftEdge">&nbsp;</td>
++          <td valign="top">
++            <table class="tableStyle" height="100%">
++              <tr>
++                <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                <td class="spacer100Percent loginTable topAlign">
++                  <table class="loginBox">
++                    <tr>
++                      <td colspan="3">
++                        <table class='tableStyle'>
++                          <tr>
++                            <td colspan='2' class='subSectionTabTopLeft spacer80Percent font12BoldBlue'>Login</td>
++                            <td class='subSectionTabTopRight spacer20Percent'><a href='javascript: void(0);' onClick="newWindow('/base/help/help.html#userlogin','userlogin','448','336','resizable=yes')"><img src='/base/images/help_icon.gif' width='12' height='12' title='Click for help'/></a></td></tr><tr><td colspan='3' class='subSectionTabTopShadow'>&nbsp;</td>
++                          </tr>
++                        </table>
++                      </td>
++                    </tr>
++                    <tr>
++                      <td class="subSectionBodyDot">&nbsp;</td>
++                      <td class="paddingsubSectionBodyNone">
++                        <table class="tableStyle">
++                          <tr>
++                            <td class="font10Bold padding4Top">Password</td>
++                            <td class="padding4Top"><INPUT class="input" type="PASSWORD" name="pwd" MAXLENGTH="20" VALUE=""></td>
++                          </tr>
++                          <tr>
++                            <td colspan="2" class="padding5TopBottom10Right"><INPUT type="IMAGE" NAME="login" src="/base/images/login_on.gif"></td>
++                          </tr>
++                        </table>
++                      </td>
++                      <td class="subSectionBodyDotRight">&nbsp;</td>
++                    </tr>
++                    <tr>
++                      <td colspan="3" class="subSectionBottom">&nbsp;</td>
++                    </tr>
++                  </table>
++                </td>
++              </tr>
++            </table>
++          </td>
++          <td rowspan="2" class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td colspan="3" class="topBottomDivider" id="cloneTd"><img src="/base/images/clear.gif" height="3"/></td>
++              </tr>
++              <tr>
++                <td colspan="3" class="footerBody">
++                  <table class="tableStyle rightHAlign" align="right">
++                    <tr>
++                      <td id="ButtonsDiv"></td>
++                    </tr>
++                  </table>
++                </td>
++              </tr>
++            </table>
++          </td>
++        </tr>
++        <tr>
++          <td class="leftEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td class="leftBottomDivider"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++                <td class="middleBottomDivider spacer100Percent"><img src="/base/images/clear.gif" height="9"/></td>
++                <td class="rightBottomDivider spacer1Percent"><img src="/base/images/clear.gif" height="9"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++        <tr>
++          <td class="leftCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td class="middleCopyrightDivider">
++            <table class="blue10 tableStyle">
++              <tr class="topAlign">
++                <td>Copyright &copy; 1996-2017 NETGEAR &reg;</td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++      </table>
++      <INPUT type="hidden" name="err_flag" size="16" maxlength="15" VALUE="0">
++      <INPUT type="hidden" name="err_msg" size="128" maxlength="512" VALUE="">
++    </FORM>
++  </body>
++</html>
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS748T/0/port_statistics.html
+@@ -0,0 +1,188 @@
++
++
++
++
++
++<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
++<html>
++  <head>
++    <LINK REL=stylesheet HREF="/base/style.css" TYPE="text/css">
++<META http-equiv="Pragma" content="no-cache">
++<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1"> <!-- Style Sheet link and Meta data     -->
++    <TITLE>NETGEAR GS748T</TITLE> <!-- Netgear Page Title  -->
++
++    <script  src="/base/js/tabs_Layer2.js" type="text/javascript"></script>
++    <script  src="/base/js/rollover.js" type="text/javascript"></script>
++    <script  src="/base/js/browser.js" type="text/javascript"></script>
++    <script language="javascript">
++      if (top != self)
++      {
++        top.location.href = "/base/web_main.html";
++      }
++    </script>
++    <script language="javascript">
++      function waitPreloadPage() 
++      {
++        document.getElementById('headdiv').style.visibility='visible';
++      }
++    </script>
++    <script language="javascript">
++      function set_form_refresh_timeout()
++      {
++        window.setTimeout("refresh_form_timeout_handler()", 60000); /* Wait for 60 seconds to bring up switch and then refresh page. */
++        disableButton('btn_Apply','btn_Cancel');
++      }
++    </script>
++  </head>
++
++
++  
++  <body onLoad="document.getElementsByName('lnk')[0].onclick();waitPreloadPage();setMrpSupported(0);setNetgearGS7XXT()">
++  
++
++
++    <div id="headdiv" style="position: relative;   border: 1px none #000000; visibility:hidden">
++      <table class="tableStyle" height="100%">
++        <tr class="topAlign">
++          <td class="leftEdge">&nbsp;</td>
++          <td valign="top">
++            <table class="tableStyle">
++              <tr>
++                <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                <td colspan="2">
++                  <table class="tableStyle">
++                    <tr>
++                      <td class="logoNetGear space50Percent topAlign"><a href="http://www.netgear.com/" target="_blank"><img src="/base/images/clear.gif" width="149" height="62"/></td>
++                      <td class="gs748tImage spacer50Percent topAlign rightHAlign"><a HREF="http://kbserver.netgear.com/products/GS748Tv4.asp" target="_blank"><img src="/base/images/clear.gif" width="205" height="62"/></td> <!-- Used to get the top right logo image with help URL  -->
++                    </tr>
++                    <tr>
++                      <td colspan="2" class="bottomAlign">
++                        <table class="tableStyle">
++                          <tr>
++                            <td class="spacer40Percent bottomAlign">
++                              <table border="0" cellpadding="0" cellspacing="0">
++                                <tr id="tabs" class="spacer100Percent">
++                                  <td><script>setMode(1,0,0,7);setIpv6Diffserv(1);setCableTest(1);setAutoDosMode(1);setAutoVideoMode(1);setAclWizardMode(1);setAutoVoipMode(1);setIPv6MgmtMode(1);setRoutingMode(0);drawHeadsTab(1);</script></td>  <!-- Get the switch properties -->
++                                </tr>
++                              </table>
++                            </td>
++                            <td class="loginActionCell spacer75Percent rightHAlign padding5LeftRight" id='logoutframe'><iframe id="logframe" name="logframe" src="/base/status.html" frameborder="0" height="35" width="70" scrolling="no"></iframe></td>
++                          </tr>
++                        </table>
++                      </td>
++                    </tr>
++                  </table>
++                </td>
++                <td class="rightHAlign"><img src="/base/images/clear.gif" width="2"/></td>
++              </tr>
++              <tr class="background-blue">
++                <td><img src="/base/images/clear.gif" width="8"/></td>
++                <td colspan="2" class="padding7Top spacer100Percent">
++                  <div id="primaryNav">
++                    <table border="0" cellpadding="0" cellspacing="0">
++                      <tr> 
++                        <td id='cloneTd' class="navCell"></td>
++                      </tr>
++                      <tr id='subTubs'></tr>
++                    </table>
++                  </div>
++                </td>
++                <td></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr class="topAlign">
++          <td valign="top" class="leftBodyNotch topAlign">&nbsp;</td>
++          <td>
++            <table class="tableStyle">
++              <tr class="topAlign">
++                <td class="leftNextBodyNotch"><img src="/base/images/clear.gif" width="11" height="16"/></td>
++                <td class="middleBodyNotch spacer100Percent">&nbsp;</td>
++                <td class="rightNextBodyNotch"><img src="/base/images/clear.gif" width="11"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightBodyNotch">&nbsp;</td>
++        </tr>
++        <tr height=100%>
++          <td rowspan="2" class="leftEdge">&nbsp;</td>
++          <td valign="top">
++            <table class="tableStyle" height="100%" width="100%">
++              <tr>
++                <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                <td class="padding2Top topAlign">
++                  <table border="0" cellspacing="0" cellpadding="0" class="thardNavContainer" id="Tree" width="144">
++                    <tr>
++                      <td class="thardNavContainerTopLeftImg"><img src="/base/images/clear.gif" width="5" height="5"/></td>
++                      <td class="thardNavContainerTopMiddleImg spacer100Percent"><img src="/base/images/clear.gif" width="5"/></td>
++                      <td class="thardNavContainerTopRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                    <tr>
++                      <td class="thardNavContainerSecondTopLeftImg"><img src="/base/images/clear.gif" width="5"/></td>
++                      <td class="leftNavBg padding1Top topAlign" id="TreeFrame"></td>
++                      <td class="thardNavContainerSecondTopRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                    <tr>
++                      <td class="thardNavContainerBottomLeftImg"><img src="/base/images/clear.gif" width="5" height="5"/></td>
++                      <td class="thardNavContainerBottomMiddleImg"><img src="/base/images/clear.gif" height="5"/></td>
++                      <td class="thardNavContainerBottomRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                  </table>
++                </td>
++                <td class="spacer85Percent" id='frameId'><iframe frameborder="no" width=100% height=100% src="" id="maincontent" name="maincontent" scrolling="auto"></iframe></td>
++              </tr>
++            </table>
++          </td>
++          <td rowspan="2" class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td colspan="3" class="topBottomDivider" id="cloneTd"><img src="/base/images/clear.gif" height="3"/></td>
++              </tr>
++              <tr>
++                <td colspan="3" class="footerBody">
++                  <table class="tableStyle rightHAlign" align="right">
++                    <tr>
++                      <td id="ButtonsDiv"></td>
++                    </tr>
++                  </table>
++                </td>
++              </tr>
++            </table>
++          </td>
++        </tr>
++        <tr>
++          <td class="leftEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td class="leftBottomDivider"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++                <td class="middleBottomDivider spacer100Percent"><img src="/base/images/clear.gif" height="9"/></td>
++                <td class="rightBottomDivider spacer1Percent"><img src="/base/images/clear.gif" height="9"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++        <tr>
++          <td class="leftCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td class="middleCopyrightDivider">
++            <table class="blue10 tableStyle">
++              <tr class="topAlign">
++                <td>Copyright &copy; 1996-2017 NETGEAR &reg;</td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++      </table>
++
++    </div>
++  </body>
++</html>
++
++
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS748T/0/port_status.html
+@@ -0,0 +1,183 @@
++<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
++<html>
++  <head>
++    <LINK REL=stylesheet HREF="/base/style.css" TYPE="text/css">
++<META http-equiv="Pragma" content="no-cache">
++<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1"> <!-- Style Sheet link and Meta data     -->
++    <TITLE>NETGEAR GS748T</TITLE> <!-- Netgear Page Title  -->
++
++    <script  src="/base/js/tabs_Layer2.js" type="text/javascript"></script>
++    <script  src="/base/js/rollover.js" type="text/javascript"></script>
++    <script  src="/base/js/browser.js" type="text/javascript"></script>
++    <script language="javascript">
++      if (top != self)
++      {
++        top.location.href = "/base/web_main.html";
++      }
++    </script>
++    <script language="javascript">
++      function waitPreloadPage()
++      {
++        document.getElementById('headdiv').style.visibility='visible';
++      }
++    </script>
++    <script language="javascript">
++      function set_form_refresh_timeout()
++      {
++        window.setTimeout("refresh_form_timeout_handler()", 60000); /* Wait for 60 seconds to bring up switch and then refresh page. */
++        disableButton('btn_Apply','btn_Cancel');
++      }
++    </script>
++  </head>
++
++
++
++  <body onLoad="document.getElementsByName('lnk')[0].onclick();waitPreloadPage();setMrpSupported(0);setNetgearGS7XXT()">
++
++
++
++    <div id="headdiv" style="position: relative;   border: 1px none #000000; visibility:hidden">
++      <table class="tableStyle" height="100%">
++        <tr class="topAlign">
++          <td class="leftEdge">&nbsp;</td>
++          <td valign="top">
++            <table class="tableStyle">
++              <tr>
++                <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                <td colspan="2">
++                  <table class="tableStyle">
++                    <tr>
++                      <td class="logoNetGear space50Percent topAlign"><a href="http://www.netgear.com/" target="_blank"><img src="/base/images/clear.gif" width="149" height="62"/></td>
++                      <td class="gs748tImage spacer50Percent topAlign rightHAlign"><a HREF="http://kbserver.netgear.com/products/GS748Tv4.asp" target="_blank"><img src="/base/images/clear.gif" width="205" height="62"/></td> <!-- Used to get the top right logo image with help URL  -->
++                    </tr>
++                    <tr>
++                      <td colspan="2" class="bottomAlign">
++                        <table class="tableStyle">
++                          <tr>
++                            <td class="spacer40Percent bottomAlign">
++                              <table border="0" cellpadding="0" cellspacing="0">
++                                <tr id="tabs" class="spacer100Percent">
++                                  <td><script>setMode(1,0,0,7);setIpv6Diffserv(1);setCableTest(1);setAutoDosMode(1);setAutoVideoMode(1);setAclWizardMode(1);setAutoVoipMode(1);setIPv6MgmtMode(1);setRoutingMode(0);drawHeadsTab(1);</script></td>  <!-- Get the switch properties -->
++                                </tr>
++                              </table>
++                            </td>
++                            <td class="loginActionCell spacer75Percent rightHAlign padding5LeftRight" id='logoutframe'><iframe id="logframe" name="logframe" src="/base/status.html" frameborder="0" height="35" width="70" scrolling="no"></iframe></td>
++                          </tr>
++                        </table>
++                      </td>
++                    </tr>
++                  </table>
++                </td>
++                <td class="rightHAlign"><img src="/base/images/clear.gif" width="2"/></td>
++              </tr>
++              <tr class="background-blue">
++                <td><img src="/base/images/clear.gif" width="8"/></td>
++                <td colspan="2" class="padding7Top spacer100Percent">
++                  <div id="primaryNav">
++                    <table border="0" cellpadding="0" cellspacing="0">
++                      <tr>
++                        <td id='cloneTd' class="navCell"></td>
++                      </tr>
++                      <tr id='subTubs'></tr>
++                    </table>
++                  </div>
++                </td>
++                <td></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr class="topAlign">
++          <td valign="top" class="leftBodyNotch topAlign">&nbsp;</td>
++          <td>
++            <table class="tableStyle">
++              <tr class="topAlign">
++                <td class="leftNextBodyNotch"><img src="/base/images/clear.gif" width="11" height="16"/></td>
++                <td class="middleBodyNotch spacer100Percent">&nbsp;</td>
++                <td class="rightNextBodyNotch"><img src="/base/images/clear.gif" width="11"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightBodyNotch">&nbsp;</td>
++        </tr>
++        <tr height=100%>
++          <td rowspan="2" class="leftEdge">&nbsp;</td>
++          <td valign="top">
++            <table class="tableStyle" height="100%" width="100%">
++              <tr>
++                <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                <td class="padding2Top topAlign">
++                  <table border="0" cellspacing="0" cellpadding="0" class="thardNavContainer" id="Tree" width="144">
++                    <tr>
++                      <td class="thardNavContainerTopLeftImg"><img src="/base/images/clear.gif" width="5" height="5"/></td>
++                      <td class="thardNavContainerTopMiddleImg spacer100Percent"><img src="/base/images/clear.gif" width="5"/></td>
++                      <td class="thardNavContainerTopRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                    <tr>
++                      <td class="thardNavContainerSecondTopLeftImg"><img src="/base/images/clear.gif" width="5"/></td>
++                      <td class="leftNavBg padding1Top topAlign" id="TreeFrame"></td>
++                      <td class="thardNavContainerSecondTopRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                    <tr>
++                      <td class="thardNavContainerBottomLeftImg"><img src="/base/images/clear.gif" width="5" height="5"/></td>
++                      <td class="thardNavContainerBottomMiddleImg"><img src="/base/images/clear.gif" height="5"/></td>
++                      <td class="thardNavContainerBottomRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                  </table>
++                </td>
++                <td class="spacer85Percent" id='frameId'><iframe frameborder="no" width=100% height=100% src="" id="maincontent" name="maincontent" scrolling="auto"></iframe></td>
++              </tr>
++            </table>
++          </td>
++          <td rowspan="2" class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td colspan="3" class="topBottomDivider" id="cloneTd"><img src="/base/images/clear.gif" height="3"/></td>
++              </tr>
++              <tr>
++                <td colspan="3" class="footerBody">
++                  <table class="tableStyle rightHAlign" align="right">
++                    <tr>
++                      <td id="ButtonsDiv"></td>
++                    </tr>
++                  </table>
++                </td>
++              </tr>
++            </table>
++          </td>
++        </tr>
++        <tr>
++          <td class="leftEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td class="leftBottomDivider"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++                <td class="middleBottomDivider spacer100Percent"><img src="/base/images/clear.gif" height="9"/></td>
++                <td class="rightBottomDivider spacer1Percent"><img src="/base/images/clear.gif" height="9"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++        <tr>
++          <td class="leftCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td class="middleCopyrightDivider">
++            <table class="blue10 tableStyle">
++              <tr class="topAlign">
++                <td>Copyright &copy; 1996-2017 NETGEAR &reg;</td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++      </table>
++
++    </div>
++  </body>
++</html>
++
++
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/GS748T/0/sysInfo.html
+@@ -0,0 +1,183 @@
++<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
++<html>
++  <head>
++    <LINK REL=stylesheet HREF="/base/style.css" TYPE="text/css">
++<META http-equiv="Pragma" content="no-cache">
++<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1"> <!-- Style Sheet link and Meta data     -->
++    <TITLE>NETGEAR GS748T</TITLE> <!-- Netgear Page Title  -->
++
++    <script  src="/base/js/tabs_Layer2.js" type="text/javascript"></script>
++    <script  src="/base/js/rollover.js" type="text/javascript"></script>
++    <script  src="/base/js/browser.js" type="text/javascript"></script>
++    <script language="javascript">
++      if (top != self)
++      {
++        top.location.href = "/base/web_main.html";
++      }
++    </script>
++    <script language="javascript">
++      function waitPreloadPage()
++      {
++        document.getElementById('headdiv').style.visibility='visible';
++      }
++    </script>
++    <script language="javascript">
++      function set_form_refresh_timeout()
++      {
++        window.setTimeout("refresh_form_timeout_handler()", 60000); /* Wait for 60 seconds to bring up switch and then refresh page. */
++        disableButton('btn_Apply','btn_Cancel');
++      }
++    </script>
++  </head>
++
++
++
++  <body onLoad="document.getElementsByName('lnk')[0].onclick();waitPreloadPage();setMrpSupported(0);setNetgearGS7XXT()">
++
++
++
++    <div id="headdiv" style="position: relative;   border: 1px none #000000; visibility:hidden">
++      <table class="tableStyle" height="100%">
++        <tr class="topAlign">
++          <td class="leftEdge">&nbsp;</td>
++          <td valign="top">
++            <table class="tableStyle">
++              <tr>
++                <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                <td colspan="2">
++                  <table class="tableStyle">
++                    <tr>
++                      <td class="logoNetGear space50Percent topAlign"><a href="http://www.netgear.com/" target="_blank"><img src="/base/images/clear.gif" width="149" height="62"/></td>
++                      <td class="gs748tImage spacer50Percent topAlign rightHAlign"><a HREF="http://kbserver.netgear.com/products/GS748Tv4.asp" target="_blank"><img src="/base/images/clear.gif" width="205" height="62"/></td> <!-- Used to get the top right logo image with help URL  -->
++                    </tr>
++                    <tr>
++                      <td colspan="2" class="bottomAlign">
++                        <table class="tableStyle">
++                          <tr>
++                            <td class="spacer40Percent bottomAlign">
++                              <table border="0" cellpadding="0" cellspacing="0">
++                                <tr id="tabs" class="spacer100Percent">
++                                  <td><script>setMode(1,0,0,7);setIpv6Diffserv(1);setCableTest(1);setAutoDosMode(1);setAutoVideoMode(1);setAclWizardMode(1);setAutoVoipMode(1);setIPv6MgmtMode(1);setRoutingMode(0);drawHeadsTab(1);</script></td>  <!-- Get the switch properties -->
++                                </tr>
++                              </table>
++                            </td>
++                            <td class="loginActionCell spacer75Percent rightHAlign padding5LeftRight" id='logoutframe'><iframe id="logframe" name="logframe" src="/base/status.html" frameborder="0" height="35" width="70" scrolling="no"></iframe></td>
++                          </tr>
++                        </table>
++                      </td>
++                    </tr>
++                  </table>
++                </td>
++                <td class="rightHAlign"><img src="/base/images/clear.gif" width="2"/></td>
++              </tr>
++              <tr class="background-blue">
++                <td><img src="/base/images/clear.gif" width="8"/></td>
++                <td colspan="2" class="padding7Top spacer100Percent">
++                  <div id="primaryNav">
++                    <table border="0" cellpadding="0" cellspacing="0">
++                      <tr>
++                        <td id='cloneTd' class="navCell"></td>
++                      </tr>
++                      <tr id='subTubs'></tr>
++                    </table>
++                  </div>
++                </td>
++                <td></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr class="topAlign">
++          <td valign="top" class="leftBodyNotch topAlign">&nbsp;</td>
++          <td>
++            <table class="tableStyle">
++              <tr class="topAlign">
++                <td class="leftNextBodyNotch"><img src="/base/images/clear.gif" width="11" height="16"/></td>
++                <td class="middleBodyNotch spacer100Percent">&nbsp;</td>
++                <td class="rightNextBodyNotch"><img src="/base/images/clear.gif" width="11"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightBodyNotch">&nbsp;</td>
++        </tr>
++        <tr height=100%>
++          <td rowspan="2" class="leftEdge">&nbsp;</td>
++          <td valign="top">
++            <table class="tableStyle" height="100%" width="100%">
++              <tr>
++                <td class="leftInside"><img src="/base/images/clear.gif" width="8"/></td>
++                <td class="padding2Top topAlign">
++                  <table border="0" cellspacing="0" cellpadding="0" class="thardNavContainer" id="Tree" width="144">
++                    <tr>
++                      <td class="thardNavContainerTopLeftImg"><img src="/base/images/clear.gif" width="5" height="5"/></td>
++                      <td class="thardNavContainerTopMiddleImg spacer100Percent"><img src="/base/images/clear.gif" width="5"/></td>
++                      <td class="thardNavContainerTopRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                    <tr>
++                      <td class="thardNavContainerSecondTopLeftImg"><img src="/base/images/clear.gif" width="5"/></td>
++                      <td class="leftNavBg padding1Top topAlign" id="TreeFrame"></td>
++                      <td class="thardNavContainerSecondTopRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                    <tr>
++                      <td class="thardNavContainerBottomLeftImg"><img src="/base/images/clear.gif" width="5" height="5"/></td>
++                      <td class="thardNavContainerBottomMiddleImg"><img src="/base/images/clear.gif" height="5"/></td>
++                      <td class="thardNavContainerBottomRightImg"><img src="/base/images/clear.gif" width="5"/></td>
++                    </tr>
++                  </table>
++                </td>
++                <td class="spacer85Percent" id='frameId'><iframe frameborder="no" width=100% height=100% src="" id="maincontent" name="maincontent" scrolling="auto"></iframe></td>
++              </tr>
++            </table>
++          </td>
++          <td rowspan="2" class="rightEdge">&nbsp;</td>
++        </tr>
++        <tr>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td colspan="3" class="topBottomDivider" id="cloneTd"><img src="/base/images/clear.gif" height="3"/></td>
++              </tr>
++              <tr>
++                <td colspan="3" class="footerBody">
++                  <table class="tableStyle rightHAlign" align="right">
++                    <tr>
++                      <td id="ButtonsDiv"></td>
++                    </tr>
++                  </table>
++                </td>
++              </tr>
++            </table>
++          </td>
++        </tr>
++        <tr>
++          <td class="leftEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td>
++            <table class="tableStyle">
++              <tr>
++                <td class="leftBottomDivider"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++                <td class="middleBottomDivider spacer100Percent"><img src="/base/images/clear.gif" height="9"/></td>
++                <td class="rightBottomDivider spacer1Percent"><img src="/base/images/clear.gif" height="9"/></td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightEdgeFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++        <tr>
++          <td class="leftCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++          <td class="middleCopyrightDivider">
++            <table class="blue10 tableStyle">
++              <tr class="topAlign">
++                <td>Copyright &copy; 1996-2017 NETGEAR &reg;</td>
++              </tr>
++            </table>
++          </td>
++          <td class="rightCopyrightFooter"><img src="/base/images/clear.gif" width="11" height="9"/></td>
++        </tr>
++      </table>
++
++    </div>
++  </body>
++</html>
++
++
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/0/login
+@@ -0,0 +1 @@
++<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Web site created using create-react-app"/><link rel="apple-touch-icon" href="/logo192.png"/><link rel="manifest" href="/manifest.json"/><title>NETGEAR</title><script defer="defer" src="/static/js/main.e8ed842d.js"></script><link href="/static/css/main.99357f1f.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+\ No newline at end of file
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/0/port_configuration
+@@ -0,0 +1,215 @@
++{
++  "resp": {
++    "status": "success",
++    "respCode": 0,
++    "respMsg": "Operation success"
++  },
++  "port_configuration": {
++    "phy_ports": [
++      {
++        "port": 1,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 7,
++        "linkstatus": 0,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 2,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 3,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 4,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 5,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 6,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 7,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 8,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 9,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 1,
++        "speedmode": 8,
++        "speedstatus": 8,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 10,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 1,
++        "speedmode": 8,
++        "speedstatus": 8,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      }
++    ],
++    "lag_ports": [
++      {
++        "port": 30,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 31,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 32,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 33,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      }
++    ],
++    "cpu_ports": [
++      {
++        "port": 29,
++        "descp": ""
++      }
++    ]
++  }
++}
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/0/port_stats
+@@ -0,0 +1,205 @@
++{
++  "resp": {
++    "status": "success",
++    "respCode": 0,
++    "respMsg": "Operation success"
++  },
++  "port_stats": [
++    {
++      "port": 1,
++      "goodPktRx": 56345,
++      "errPktRx": 0,
++      "broadPktRx": 42871,
++      "goodPktTx": 6250,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 2,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 3,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 4,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 5,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 6,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 7,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 8,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 9,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 10,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 30,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    },
++    {
++      "port": 31,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    },
++    {
++      "port": 32,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    },
++    {
++      "port": 33,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    }
++  ]
++}
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/0/system_information
+@@ -0,0 +1,73 @@
++{
++  "resp": {
++    "status": "success",
++    "respCode": 0,
++    "respMsg": "Operation success"
++  },
++  "system_information": {
++    "sysName": "",
++    "sysLocation": "",
++    "sysContact": "",
++    "sysSN": "79V13B5VA0039",
++    "sysProduct": "XS508TM S3600 Series 8-Port 10G/Multi-Gigabit Ethernet Smart Switch with 2 SFP+ Ports, 7.8.11.17, 1.0.0.2",
++    "sysMac": "54:07:7D:0D:98:31",
++    "sysObjectOid": "1.3.6.1.4.1.4526.100.4.100",
++    "sysDateTime": "2025-02-22 02:12:40",
++    "sysUpTimeDays": 0,
++    "sysUpTimeHours": 0,
++    "sysUpTimeMins": 8,
++    "sysUpTimeSecs": 39,
++    "txtVerModelName": "XS508TM",
++    "txtBootVer": "1.0.0.2",
++    "txtSwVer": "7.8.11.17",
++    "powers": [
++      {
++        "txtPowerSupply": 1,
++        "txtPowerDescriptor": "PS-1",
++        "txtPowerType": 1,
++        "txtPowerState": 2
++      }
++    ],
++    "thermals": [
++      {
++        "sensor": 1,
++        "temp": 36,
++        "maxTemp": 36,
++        "state": 2,
++        "descp": "Local"
++      },
++      {
++        "sensor": 2,
++        "temp": 34,
++        "maxTemp": 34,
++        "state": 2,
++        "descp": "Remote-1"
++      },
++      {
++        "sensor": 3,
++        "temp": 36,
++        "maxTemp": 36,
++        "state": 2,
++        "descp": "Remote-2"
++      }
++    ],
++    "fans": [
++      {
++        "txtFan": 1,
++        "txtFanDescriptor": "FAN-1",
++        "txtFanType": 1,
++        "txtFanSpeed": 2968,
++        "txtDutyLevel": 29,
++        "txtFanState": 2
++      },
++      {
++        "txtFan": 2,
++        "txtFanDescriptor": "FAN-2",
++        "txtFanType": 1,
++        "txtFanSpeed": 3098,
++        "txtDutyLevel": 29,
++        "txtFanState": 2
++      }
++    ]
++  }
++}
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/1/login
+@@ -0,0 +1 @@
++<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Web site created using create-react-app"/><link rel="apple-touch-icon" href="/logo192.png"/><link rel="manifest" href="/manifest.json"/><title>NETGEAR</title><script defer="defer" src="/static/js/main.e8ed842d.js"></script><link href="/static/css/main.99357f1f.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+\ No newline at end of file
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/1/port_configuration
+@@ -0,0 +1,215 @@
++{
++  "resp": {
++    "status": "success",
++    "respCode": 0,
++    "respMsg": "Operation success"
++  },
++  "port_configuration": {
++    "phy_ports": [
++      {
++        "port": 1,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 7,
++        "linkstatus": 0,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 2,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 3,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 4,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 5,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 6,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 7,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 8,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 0,
++        "speedmode": 1,
++        "speedstatus": 130,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 9,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 1,
++        "speedmode": 8,
++        "speedstatus": 8,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 10,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 1,
++        "speedmode": 8,
++        "speedstatus": 8,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": 0,
++        "mac": "54:07:7D:0D:98:33"
++      }
++    ],
++    "lag_ports": [
++      {
++        "port": 30,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 31,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 32,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      },
++      {
++        "port": 33,
++        "descp": "",
++        "type": 1,
++        "admin": 1,
++        "autoNego": 65535,
++        "speedmode": 129,
++        "speedstatus": 129,
++        "linkstatus": 1,
++        "trap": 1,
++        "maxFrmsz": 1500,
++        "flowCtrl": "",
++        "mac": "54:07:7D:0D:98:33"
++      }
++    ],
++    "cpu_ports": [
++      {
++        "port": 29,
++        "descp": ""
++      }
++    ]
++  }
++}
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/1/port_stats
+@@ -0,0 +1,205 @@
++{
++  "resp": {
++    "status": "success",
++    "respCode": 0,
++    "respMsg": "Operation success"
++  },
++  "port_stats": [
++    {
++      "port": 1,
++      "goodPktRx": 57745,
++      "errPktRx": 3,
++      "broadPktRx": 42871,
++      "goodPktTx": 7250,
++      "errPktTx": 2,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 2,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 3,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 4,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 5,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 6,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 7,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 8,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 9,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 10,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 42
++    },
++    {
++      "port": 30,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    },
++    {
++      "port": 31,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    },
++    {
++      "port": 32,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    },
++    {
++      "port": 33,
++      "goodPktRx": 0,
++      "errPktRx": 0,
++      "broadPktRx": 0,
++      "goodPktTx": 0,
++      "errPktTx": 0,
++      "collisionPkt": 0,
++      "lnkdwnevnt": 0,
++      "lastResetDay": 0,
++      "lastResetHour": 0,
++      "lastResetMin": 12,
++      "lastResetSec": 41
++    }
++  ]
++}
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/pages/XS508TM/1/system_information
+@@ -0,0 +1,73 @@
++{
++  "resp": {
++    "status": "success",
++    "respCode": 0,
++    "respMsg": "Operation success"
++  },
++  "system_information": {
++    "sysName": "",
++    "sysLocation": "",
++    "sysContact": "",
++    "sysSN": "79V13B5VA0039",
++    "sysProduct": "XS508TM S3600 Series 8-Port 10G/Multi-Gigabit Ethernet Smart Switch with 2 SFP+ Ports, 7.8.11.17, 1.0.0.2",
++    "sysMac": "54:07:7D:0D:98:31",
++    "sysObjectOid": "1.3.6.1.4.1.4526.100.4.100",
++    "sysDateTime": "2025-02-22 02:12:40",
++    "sysUpTimeDays": 0,
++    "sysUpTimeHours": 0,
++    "sysUpTimeMins": 8,
++    "sysUpTimeSecs": 39,
++    "txtVerModelName": "XS508TM",
++    "txtBootVer": "1.0.0.2",
++    "txtSwVer": "7.8.11.17",
++    "powers": [
++      {
++        "txtPowerSupply": 1,
++        "txtPowerDescriptor": "PS-1",
++        "txtPowerType": 1,
++        "txtPowerState": 2
++      }
++    ],
++    "thermals": [
++      {
++        "sensor": 1,
++        "temp": 36,
++        "maxTemp": 36,
++        "state": 2,
++        "descp": "Local"
++      },
++      {
++        "sensor": 2,
++        "temp": 34,
++        "maxTemp": 34,
++        "state": 2,
++        "descp": "Remote-1"
++      },
++      {
++        "sensor": 3,
++        "temp": 36,
++        "maxTemp": 36,
++        "state": 2,
++        "descp": "Remote-2"
++      }
++    ],
++    "fans": [
++      {
++        "txtFan": 1,
++        "txtFanDescriptor": "FAN-1",
++        "txtFanType": 1,
++        "txtFanSpeed": 2968,
++        "txtDutyLevel": 29,
++        "txtFanState": 2
++      },
++      {
++        "txtFan": 2,
++        "txtFanDescriptor": "FAN-2",
++        "txtFanType": 1,
++        "txtFanSpeed": 3098,
++        "txtDutyLevel": 29,
++        "txtFanState": 2
++      }
++    ]
++  }
++}
+--- python3-py-netgear-plus-0.4.6.orig/requirements.txt
++++ python3-py-netgear-plus-0.4.6/requirements.txt
+@@ -1,6 +1,6 @@
+ colorlog==6.9.0
+-ruff==0.9.6
++ruff==0.11.12
+ hatchling==1.27.0
+ build==1.2.2.post1
+-pytest==8.3.4
+-pytest-cov==6.0.0
+\ No newline at end of file
++pytest==8.3.5
++pytest-cov==6.1.1
+\ No newline at end of file
+--- python3-py-netgear-plus-0.4.6.orig/src/py_netgear_plus/models.py
++++ python3-py-netgear-plus-0.4.6/src/py_netgear_plus/models.py
+@@ -2,6 +2,8 @@
+ 
+ from typing import ClassVar
+ 
++from py_netgear_plus.utils import get_all_child_classes_list
++
+ 
+ class MultipleModelsDetectedError(Exception):
+     """Detection of switch model was not unique."""
+@@ -271,6 +273,18 @@ class GS308E(AutodetectedSwitchModel):
+     ALLOWED_COOKIE_TYPES: ClassVar = ["GS108SID", "SID"]
+ 
+ 
++class GS308Ev4(GS108Ev4):
++    """Definition for Netgear GS308Ev3 model."""
++
++    MODEL_NAME = "GS308Ev4"
++    PORTS = 8
++    CHECKS_AND_RESULTS: ClassVar = [
++        ("check_login_form_rand", [True]),
++        ("parse_login_title_tag", ["GS308Ev4"]),
++    ]
++    ALLOWED_COOKIE_TYPES: ClassVar = ["SID"]
++
++
+ class EMxSeries(AutodetectedSwitchModel):
+     """Parent class definition for Netgear GSxxxEMX and XSxxxEM models."""
+ 
+@@ -675,25 +689,4 @@ class GS116Ev2(JGSxxxSeries):
+     ]
+ 
+ 
+-MODELS = [
+-    GS105E,
+-    GS105Ev2,
+-    GS105PE,
+-    GS108E,
+-    GS108Ev3,
+-    GS108Ev4,
+-    GS108PEv3,
+-    GS305E,
+-    GS308E,
+-    GS110EMX,
+-    GS305EP,
+-    GS305EPP,
+-    GS308EP,
+-    GS308EPP,
+-    GS316EP,
+-    GS316EPP,
+-    JGS516PE,
+-    JGS524Ev2,
+-    XS512EM,
+-    GS116Ev2,
+-]
++MODELS = get_all_child_classes_list(AutodetectedSwitchModel, "MODEL_NAME")
+--- python3-py-netgear-plus-0.4.6.orig/src/py_netgear_plus/parsers.py
++++ python3-py-netgear-plus-0.4.6/src/py_netgear_plus/parsers.py
+@@ -8,6 +8,7 @@ from lxml import html
+ from requests import Response
+ 
+ from .fetcher import BaseResponse
++from .utils import get_all_child_classes_dict
+ 
+ _LOGGER = logging.getLogger(__name__)
+ 
+@@ -650,6 +651,14 @@ class GS308E(PageParser):
+         super().__init__()
+ 
+ 
++class GS308Ev4(GS108Ev4):
++    """Parser for the GS308Ev4 switch."""
++
++    def __init__(self) -> None:
++        """Initialize the GS308Ev4 parser."""
++        super().__init__()
++
++
+ class EMxSeries(PageParser):
+     """Parser for the GS110EMX switch."""
+ 
+@@ -1260,26 +1269,4 @@ class GS116Ev2(JGSxxxSeries):
+         super().__init__()
+ 
+ 
+-PARSERS = {
+-    "GS105E": GS105E,
+-    "GS105Ev2": GS105Ev2,
+-    "GS105PE": GS105PE,
+-    "GS105Ev3": GS105Ev3,
+-    "GS108E": GS108E,
+-    "GS108Ev3": GS108Ev3,
+-    "GS108Ev4": GS108Ev4,
+-    "GS108PEv3": GS108PEv3,
+-    "GS305E": GS305E,
+-    "GS308E": GS308E,
+-    "GS110EMX": GS110EMX,
+-    "GS305EP": GS305EP,
+-    "GS305EPP": GS305EPP,
+-    "GS308EP": GS308EP,
+-    "GS308EPP": GS308EPP,
+-    "GS316EP": GS316EP,
+-    "GS316EPP": GS316EPP,
+-    "JGS516PE": JGS516PE,
+-    "JGS524Ev2": JGS524Ev2,
+-    "XS512EM": XS512EM,
+-    "GS116Ev2": GS116Ev2,
+-}
++PARSERS = get_all_child_classes_dict(PageParser)
+--- /dev/null
++++ python3-py-netgear-plus-0.4.6/src/py_netgear_plus/utils.py
+@@ -0,0 +1,67 @@
++"""Utility functions."""
++
++
++def get_all_child_classes_dict(
++    parent_class: type[object], filter_attr: str | None = None
++) -> dict[str, type[object]]:
++    """
++    Retrieve a dictionary of all subclasses of the given parent class.
++
++    The key is the subclass's `filter_attr` attribute if provided. Otherwise,
++    it includes all subclasses using their class name.
++
++    If a subclass does not have the `filter_attr` attribute or it is empty,
++    it is skipped from the dictionary, but its children are still included.
++
++    :param parent_class: The parent class to find subclasses of.
++    :param filter_attr: The attribute to filter subclasses (default: None,
++        meaning include all).
++    :return: A dictionary {subclass.filter_attr: subclass_object} if
++        filter_attr is provided, otherwise {subclass.__name__: subclass_object}.
++    """
++    subclasses_dict: dict[str, type[object]] = {}
++
++    for subclass in parent_class.__subclasses__():
++        # Recursively get child subclasses first
++        subclasses_dict.update(get_all_child_classes_dict(subclass, filter_attr))
++
++        if filter_attr:
++            attr_value = getattr(subclass, filter_attr, None)
++            if isinstance(attr_value, str) and attr_value:
++                subclasses_dict[attr_value] = subclass
++        else:
++            subclasses_dict[subclass.__name__] = (
++                subclass  # Use class name if no filter attribute
++            )
++
++    return subclasses_dict
++
++
++def get_all_child_classes_list(
++    parent_class: type[object], filter_attr: str | None = None
++) -> list[type[object]]:
++    """
++    Retrieve a list of all subclasses of the given parent class.
++
++    If `filter_attr` is provided, only subclasses with a non-empty `filter_attr`
++    value are returned.
++
++    :param parent_class: The parent class to find subclasses of.
++    :param filter_attr: The attribute to filter subclasses (default: None,
++        meaning include all).
++    :return: A list of subclass objects.
++    """
++    subclasses_list: list[type[object]] = []
++
++    for subclass in parent_class.__subclasses__():
++        # Recursively get child subclasses first
++        subclasses_list.extend(get_all_child_classes_list(subclass, filter_attr))
++
++        if filter_attr:
++            attr_value = getattr(subclass, filter_attr, None)
++            if isinstance(attr_value, str) and attr_value:
++                subclasses_list.append(subclass)
++        else:
++            subclasses_list.append(subclass)  # Include all if no filter attribute
++
++    return subclasses_list
+--- python3-py-netgear-plus-0.4.6.orig/tests/test___init__.py
++++ python3-py-netgear-plus-0.4.6/tests/test___init__.py
+@@ -26,7 +26,9 @@ from py_netgear_plus.models import (
+     AutodetectedSwitchModel,
+     GS105Ev2,
+     GS108Ev3,
++    GS108Ev4,
+     GS108PEv3,
++    GS308Ev4,
+     JGS524Ev2,
+ )
+ from py_netgear_plus.netgear_crypt import hex_hmac_md5, merge_hash
+@@ -43,6 +45,7 @@ MODEL_PARAMETERS = [
+         "3e51baecfd84e4c0010662d6d92a1253",
+         '<html><input name="Gambit" value="cookie_value"></html>',
+     ),
++    (GS108Ev4, "1798387901", "0b9b21bb5c28b73e300cfb526d468bd9", "<html></html>"),
+     (GS305E, "1018767543", "c01909066125ac45d275af0a6cd09b5e", "<html></html>"),
+     (GS308E, "2102219470", "e8e0a9820f683fe8e64da0014a49902c", "<html></html>"),
+     (GS308EP, "990464497", "43001294a37a3f2e1f919b64072a1a32", "<html></html>"),
+@@ -54,6 +57,12 @@ MODEL_PARAMETERS = [
+         '<html><input name="Gambit" value="cookie_value"></html>',
+     ),
+     (
++        GS308Ev4,
++        "1467252539",
++        "5f01444681a83b9a39c6e9e1ea2a91db",
++        "<html></html>",
++    ),
++    (
+         JGS516PE,
+         None,
+         "26fe7cce1e480dd05e7f76155579d3ed",
+@@ -79,11 +88,13 @@ MODELS_FOR_GET_SWITCH_INFOS = [
+     GS105PE,
+     GS108Ev3,
+     GS108PEv3,
++    GS108Ev4,
+     GS110EMX,
+     GS305E,
+     GS308E,
+     GS308EP,
+     GS308EPP,
++    GS308Ev4,
+     GS316EPP,
+     JGS516PE,
+     JGS524Ev2,
