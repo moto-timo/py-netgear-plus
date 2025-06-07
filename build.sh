@@ -4,7 +4,7 @@
 set -e
 
 # Can be /var/cache/pbuilder/result for some workflows:
-RESULT_DIRECTORY=..
+RESULT_DIRECTORY=/var/cache/pbuilder/result
 
 # Get some information from the changelog
 SOURCE="$(dpkg-parsechangelog --show-field=Source)"
