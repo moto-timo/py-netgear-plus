@@ -1,10 +1,10 @@
 Source: python3-py-netgear-plus
-Section: unknown
+Section: python
 Priority: optional
 Maintainer: Tim Orling <>
-Build-Depends: debhelper-compat (= 13), dh-python, python3-all
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, pybuild-plugin-pyproject, python3-hatchling
 Standards-Version: 4.5.1
-Homepage: <insert the upstream URL, if relevant>
+Homepage: https://github.com/fokke/py-netgear-plus
 Rules-Requires-Root: no
 #Vcs-Git: https://salsa.debian.org/debian/python3-py-netgear-plus.git
 #Vcs-Browser: https://salsa.debian.org/debian/python3-py-netgear-plus
